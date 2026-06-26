@@ -1,0 +1,2796 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feline Command Terminal - GAS Edition</title>
+  
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Tailwind Custom Theme Setup -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Space Grotesk"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom CRT scanline effect */
+    .crt-overlay {
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      opacity: 0.04;
+      background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%), linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));
+      background-size: 100% 4px, 6px 100%;
+    }
+    
+    /* Scrollbar style */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #484555;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #7c5cfc;
+    }
+    
+    .pixel-border {
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body class="bg-[#0F1117] text-[#e6e0ee] min-h-screen flex flex-col font-sans select-none antialiased">
+  
+  <!-- CRT Glass Overlay -->
+  <div class="crt-overlay"></div>
+
+  <!-- Top Navigation Command Bar -->
+  <header class="bg-[#1A1D27] border-b-2 border-[#484555] px-5 py-3 flex justify-between items-center relative z-20">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2">
+        <span class="text-xl animate-bounce" style="animation-duration: 4s;">🦁</span>
+        <span class="font-sans text-base font-bold text-white tracking-wider uppercase flex items-center gap-2">
+          FELINE COMMAND <span class="text-[#F59E0B] font-mono text-[10px]">// GAS INTEGRATED</span>
+        </span>
+      </div>
+      <div class="hidden lg:flex items-center gap-3.5 pl-6 border-l border-[#484555]">
+        <span class="text-xs text-[#22C55E] font-mono flex items-center gap-1.5 uppercase">
+          <span class="w-2 h-2 rounded-full bg-[#22C55E] inline-block animate-pulse"></span> SYSTEM ONLINE
+        </span>
+        <span class="text-[11px] text-[#c9c4d8]/60 font-mono">TIME (UTC): <span id="clock-display">00:00:00</span></span>
+      </div>
+    </div>
+
+    <!-- Right Profile Pill & Gas Connection Status -->
+    <div class="flex items-center gap-4">
+      <div id="gas-status" class="bg-black/40 border border-[#484555] px-3 py-1 rounded-full text-[10px] font-mono text-[#F59E0B] flex items-center gap-2 hidden lg:flex">
+        <span class="w-1.5 h-1.5 bg-[#F59E0B] rounded-full" id="gas-indicator"></span>
+        <span id="gas-text">SHEET CONNECTION: STANDALONE MODE</span>
+      </div>
+
+      <!-- Gmail Login / Connection container -->
+      <div id="header-auth-actions" class="flex items-center gap-2">
+        <!-- Injected dynamically by JS -->
+      </div>
+
+      <div onclick="openProfileModal()" class="flex items-center gap-2 border border-[#484555] hover:border-[#cabeff] bg-black/20 hover:bg-black/40 pl-2 pr-3 py-1 rounded-full cursor-pointer transition-all group relative select-none" title="คลิกเพื่อแก้ไขโปรไฟล์">
+        <img id="profile-img-header" class="w-6 h-6 rounded-full border border-white/20 object-cover" 
+             alt="CEO Whiskers"
+             src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZO8rTnSxuzGK-c4bvP_bKC4uyLaBA6ZnDw_K7KUyNdXNfAise5p1glDXi9pze2KGl5733adBT7wpmZQ6ftszjFe29SaVjaCmLbJghmmR58nfcs_CVjLIcHLurWXJlFEto9VZ9OzkXlyYMH49YzkMWtPE40SKa-K8g-zVdMEm0P2_F8tA9vlY-BoGH645juP_wkjvB0ZQyrT9UQHWR60S_03qoB75EjbSI0dW62bUIIUuh38uwhusyKxBiWXPH2bVuCn8Ouxg4MmJv"
+             referrerpolicy="no-referrer">
+        <div class="text-left leading-none">
+          <div class="text-white font-bold font-sans text-[10px] flex items-center gap-1">
+            <span id="profile-name-header">CEO Whiskers</span>
+            <span class="opacity-40 group-hover:opacity-100 transition-opacity text-[8px] text-[#cabeff]">✏️</span>
+          </div>
+          <div id="profile-level-header" class="text-[8px] text-[#F59E0B] font-mono mt-0.5">LVL_99 TYCOON</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Work area -->
+  <div class="flex-1 flex flex-col md:flex-row">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-60 bg-[#1A1D27] border-r-2 border-[#484555] flex flex-col justify-between p-4 relative z-10 shrink-0">
+      <div class="space-y-6">
+        
+        <!-- CEO Card avatar -->
+        <div onclick="openProfileModal()" class="border-2 border-[#484555] hover:border-[#cabeff] bg-black/45 rounded p-3 text-center flex flex-col items-center cursor-pointer transition-all group relative" title="คลิกเพื่อแก้ไขโปรไฟล์">
+          <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 rounded">
+            <span class="text-white text-[9px] font-mono font-bold border border-white/20 px-2 py-1 rounded bg-[#1A1D27]/90 flex items-center gap-1">
+              EDIT PROFILE ✏️
+            </span>
+          </div>
+          <div class="w-16 h-16 border-2 border-[#cabeff]/40 overflow-hidden rounded-full mb-2 bg-[#0F1117]">
+            <img id="profile-img-sidebar" class="w-full h-full object-cover group-hover:scale-105 transition-all duration-300" 
+                 alt="CEO Whiskers"
+                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuCM8Ve5m3Ih0WqEpktNygSXsTIKBt_1tSLnsVBA6b28Utg_NP-k1kjdR_8uh5oG4FOVK0Xey1O6TMShLP0j_QfJdlNA6kn23AftUcNbHQ7FgdoHCCPFfcuW4c3KJ51Ker5YBAYcEfsj78DAAnCQgsVgZvxQTL22dZy8QjitNhPLfiC6lIKS3kErL7b3sJWxPh91ARijqTAs_OeLWzt1SKJUU0AetsqZqJwCI-G_bXUo6ENSMqRYMfi6U-N-t3e3pmSuIj4RKSykxcrq"
+                 referrerpolicy="no-referrer">
+          </div>
+          <h3 id="profile-name-sidebar" class="font-sans text-xs font-bold text-white tracking-wider uppercase">CEO Whiskers</h3>
+          <p id="profile-role-sidebar" class="text-[9px] font-mono text-gray-400 mt-0.5">// CHIEF EXECUTIVE OFFICER</p>
+        </div>
+
+        <!-- Navigation Tabs Links -->
+        <nav class="space-y-1.5" id="navigation-tabs">
+          <button onclick="switchTab('command')" class="nav-btn w-full text-left px-3 py-2.5 font-mono text-xs font-bold rounded flex items-center gap-3 transition-all cursor-pointer bg-[#201e28] text-white border-l-4 border-l-[#cabeff]" data-tab="command">
+            <i data-lucide="terminal" class="w-4 h-4 text-[#cabeff]"></i> CommandCenter
+          </button>
+          <button onclick="switchTab('members')" class="nav-btn w-full text-left px-3 py-2.5 font-mono text-xs font-bold rounded flex items-center gap-3 transition-all cursor-pointer text-gray-400 hover:text-white hover:bg-white/5" data-tab="members">
+            <i data-lucide="users" class="w-4 h-4 text-[#22C55E]"></i> Organization & Ranks
+          </button>
+          <button onclick="switchTab('marketing')" class="nav-btn w-full text-left px-3 py-2.5 font-mono text-xs font-bold rounded flex items-center gap-3 transition-all cursor-pointer text-gray-400 hover:text-white hover:bg-white/5" data-tab="marketing">
+            <i data-lucide="megaphone" class="w-4 h-4 text-[#FF61D2]"></i> Marketing Strat
+          </button>
+          <button onclick="switchTab('finance')" class="nav-btn w-full text-left px-3 py-2.5 font-mono text-xs font-bold rounded flex items-center gap-3 transition-all cursor-pointer text-gray-400 hover:text-white hover:bg-white/5" data-tab="finance">
+            <i data-lucide="trending-up" class="w-4 h-4 text-[#F59E0B]"></i> Skin Trading Log
+          </button>
+          <button onclick="switchTab('risk')" class="nav-btn w-full text-left px-3 py-2.5 font-mono text-xs font-bold rounded flex items-center gap-3 transition-all cursor-pointer text-gray-400 hover:text-white hover:bg-white/5" data-tab="risk">
+            <i data-lucide="shield" class="w-4 h-4 text-[#EF4444]"></i> Risk Analyzer
+          </button>
+          <button onclick="switchTab('operations')" class="nav-btn w-full text-left px-3 py-2.5 font-mono text-xs font-bold rounded flex items-center gap-3 transition-all cursor-pointer text-gray-400 hover:text-white hover:bg-white/5" data-tab="operations">
+            <i data-lucide="wrench" class="w-4 h-4 text-[#3b82f6]"></i> Operations Hub
+          </button>
+          <button onclick="switchTab('sheets')" class="nav-btn w-full text-left px-3 py-2.5 font-mono text-xs font-bold rounded flex items-center gap-3 transition-all cursor-pointer text-gray-400 hover:text-white hover:bg-white/5" data-tab="sheets">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-[#10B981]"></i> Sheets / AppScript
+          </button>
+        </nav>
+      </div>
+
+      <!-- Emergency alert footer button -->
+      <div class="pt-6 border-t border-[#484555]/60 mt-6">
+        <button onclick="triggerEmergency()" class="w-full py-3 bg-[#EF4444] text-white font-sans font-bold text-xs uppercase tracking-wider shadow-[0_4px_0_0_#991b1b] hover:translate-y-px hover:shadow-[0_2px_0_0_#991b1b] active:translate-y-0.5 active:shadow-none transition-all rounded animate-pulse">
+          🚨 EMERGENCY CATNIP
+        </button>
+      </div>
+    </aside>
+
+    <!-- Viewport Content Frame -->
+    <main class="flex-1 p-6 md:p-8 overflow-y-auto bg-[#0F1117] relative">
+      
+      <!-- TAB 1: COMMAND CENTER -->
+      <div id="tab-content-command" class="tab-pane space-y-6">
+        <div class="grid grid-cols-12 gap-5">
+          <!-- Agent Duty & Quick Task Assignment (replaced Global Performance Tracker) -->
+          <section class="col-span-12 xl:col-span-8 bg-[#1A1D27]/80 backdrop-blur-md border-2 border-[#484555] p-5 shadow-lg rounded relative flex flex-col justify-between">
+            <div class="absolute top-0 left-0 w-full h-[3px] bg-[#cabeff]"></div>
+            
+            <div class="flex justify-between items-center mb-4">
+              <div class="flex items-center gap-2">
+                <i data-lucide="user-check" class="text-[#cabeff] w-5 h-5"></i>
+                <h3 class="font-sans text-lg font-bold text-[#cabeff] tracking-tight">ระบบจัดวางกำลังพล // AGENT OPERATIONS RADAR</h3>
+              </div>
+              <span class="px-3 py-1 bg-[#14121b] text-[10px] font-mono text-[#22C55E] border border-[#22C55E]/30 rounded flex items-center gap-1.5 animate-pulse">
+                <span class="w-1.5 h-1.5 bg-[#22C55E] rounded-full"></span> LIVE STATUS
+              </span>
+            </div>
+
+            <!-- Agent Summary Stats Panels -->
+            <div class="grid grid-cols-3 gap-3 mb-4">
+              <div class="bg-black/30 p-3 border border-[#484555]/40 rounded text-center">
+                <p class="text-[10px] text-gray-400 font-mono">กำลังพลทั้งหมด / TOTAL AGENTS</p>
+                <p class="text-xl font-bold text-white font-mono" id="dash-agent-total">0</p>
+              </div>
+              <div class="bg-[#EF4444]/10 p-3 border border-[#EF4444]/30 rounded text-center">
+                <p class="text-[10px] text-[#EF4444] font-mono font-bold">● ปฏิบัติหน้าที่ / ON DUTY</p>
+                <p class="text-xl font-bold text-[#EF4444] font-mono" id="dash-agent-active">0</p>
+              </div>
+              <div class="bg-[#22C55E]/10 p-3 border border-[#22C55E]/30 rounded text-center">
+                <p class="text-[10px] text-[#22C55E] font-mono font-bold">● รอรับมอบหมายงาน / IDLE</p>
+                <p class="text-xl font-bold text-[#22C55E] font-mono" id="dash-agent-idle">0</p>
+              </div>
+            </div>
+
+            <!-- Dual Columns: Roster and Assignment -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
+              
+              <!-- Left: Live Roster with mini avatars -->
+              <div class="lg:col-span-6 bg-black/25 border border-[#484555]/50 p-3 rounded flex flex-col justify-between h-[210px] overflow-y-auto">
+                <div>
+                  <h4 class="font-mono text-[10px] text-[#cabeff] font-bold uppercase mb-2 border-b border-[#484555]/30 pb-1 flex items-center justify-between">
+                    <span>รายชื่อสายลับองค์กร / AGENT STATUS</span>
+                    <span class="text-[9px] text-gray-500 font-normal">คลิกเพื่อเลือกเอเจนท์</span>
+                  </h4>
+                  <div class="space-y-1.5" id="dash-roster-list">
+                    <!-- Dynamic agent items with clicking selection capability -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right: Real Task Assignment -->
+              <div class="lg:col-span-6 bg-black/25 border border-[#484555]/50 p-3 rounded flex flex-col justify-between h-[210px]">
+                <div>
+                  <h4 class="font-mono text-[10px] text-[#F59E0B] font-bold uppercase mb-2 border-b border-[#484555]/30 pb-1">
+                    ⚡ มอบหมายภารกิจทันที / QUICK DEPLOYMENT
+                  </h4>
+                  <form id="dash-assign-form" onsubmit="handleDashAssign(event)" class="space-y-2 font-mono text-[11px]">
+                    <div>
+                      <label class="block text-gray-400 text-[9px] uppercase font-bold mb-0.5">เอเจนท์ที่เลือก / Target Agent</label>
+                      <select id="dash-assign-agent-select" required class="w-full bg-[#0F1117] border border-[#484555] rounded px-2 py-1 text-white focus:outline-none focus:border-[#cabeff]">
+                        <!-- Dynamic idle agents options -->
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block text-gray-400 text-[9px] uppercase font-bold mb-0.5">เลือกภารกิจหลัก / Mission Brief</label>
+                      <select id="dash-assign-mission-select" onchange="toggleCustomMissionInput()" class="w-full bg-[#0F1117] border border-[#484555] rounded px-2 py-1 text-white focus:outline-none focus:border-[#cabeff]">
+                        <!-- Predefined missions options + Custom Mission -->
+                      </select>
+                    </div>
+
+                    <div id="custom-mission-input-wrapper" class="hidden">
+                      <label class="block text-[#FF61D2] text-[9px] uppercase font-bold mb-0.5">ระบุภารกิจที่กำหนดเอง / Custom Objective</label>
+                      <input type="text" id="dash-assign-custom-title" placeholder="เช่น จัดเสบียงปลาทูน่าเกรดสิบดาว..." class="w-full bg-[#0F1117] border border-[#FF61D2]/50 rounded px-2 py-1 text-white placeholder-gray-600 focus:outline-none focus:border-[#FF61D2]">
+                    </div>
+
+                    <div class="pt-1.5">
+                      <button type="submit" class="w-full bg-[#cabeff] text-[#32009a] font-bold py-1.5 rounded text-[11px] hover:brightness-110 active:translate-y-px transition-all flex items-center justify-center gap-1">
+                        <i data-lucide="navigation" class="w-3.5 h-3.5"></i> มอบหมายงานจริง & DEPLOY AGENT
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Dashboard status footer -->
+            <div class="mt-4 pt-3 border-t border-[#484555]/30 flex justify-between items-center text-[10px] font-mono text-gray-500">
+              <div class="flex items-center gap-3">
+                <span>SECURITY LEVEL: MAX SECURITY</span>
+                <span id="dash-assignment-feedback" class="text-[#22C55E]"></span>
+              </div>
+              <div class="text-[10px] text-gray-400 font-mono flex items-center gap-2">
+                <span>TOTAL REVENUE: <span class="text-[#22C55E] font-bold" id="stat-revenue">฿0</span></span>
+                <span>COUNT: <span class="text-[#FF61D2] font-bold" id="stat-count">0</span></span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Agent Secure Chat (replaced System Logs) -->
+          <section class="col-span-12 xl:col-span-4 bg-[#1A1D27]/80 backdrop-blur-md border-2 border-[#484555] flex flex-col h-[410px] shadow-lg rounded">
+            <div class="p-3 bg-[#2b2932] border-b-2 border-[#484555] flex items-center justify-between">
+              <span class="font-mono text-xs font-bold text-[#cabeff] flex items-center gap-1.5">
+                <i data-lucide="message-square" class="w-3.5 h-3.5 text-[#cabeff]"></i> FELINE_CHAT_ROOM.EXE
+              </span>
+              <span class="text-[10px] font-mono text-[#22C55E] flex items-center gap-1">
+                <span class="w-1.5 h-1.5 bg-[#22C55E] rounded-full animate-ping"></span> SECURE LIVE
+              </span>
+            </div>
+            
+            <!-- Chat Messages Container -->
+            <div id="chat-messages-container" class="flex-1 p-3 font-mono text-xs space-y-2.5 overflow-y-auto bg-black/40 scroll-smooth">
+              <!-- Messages injected here dynamically -->
+            </div>
+
+            <!-- Chat Input Area -->
+            <form onsubmit="handleSendChatMessage(event)" class="p-2 border-t border-[#484555] bg-[#14121b] flex gap-2">
+              <input type="text" id="chat-input-field" placeholder="พิมพ์ข้อความวิทยุคุยงาน... [ENTER]" autocomplete="off" class="flex-1 bg-[#0F1117] border border-[#484555] rounded px-2 py-1.5 text-xs text-white placeholder-gray-500 focus:border-[#cabeff] focus:outline-none">
+              <button type="submit" class="bg-[#cabeff] text-[#32009a] font-bold px-3 py-1.5 rounded hover:brightness-110 active:translate-y-px text-xs flex items-center gap-1">
+                <i data-lucide="send" class="w-3 h-3"></i> ส่ง
+              </button>
+            </form>
+          </section>
+
+          <!-- Mission Status Board & Tracker (replaces GLOBAL LOGISTICS MAP) -->
+          <section class="col-span-12 bg-[#14121b] border-2 border-[#484555] p-4 relative rounded shadow-inner overflow-hidden">
+            <div class="absolute top-0 right-0 p-2 z-10 flex items-center gap-1.5">
+              <span class="flex h-2 w-2 relative">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+              </span>
+              <span class="text-[9px] font-mono text-gray-500 uppercase tracking-widest">
+                DYNAMIC AUTO-TRACKING SYSTEM // UPDATING IN REALTIME
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2 mb-4">
+              <i data-lucide="zap" class="text-[#F59E0B] w-4 h-4 animate-bounce"></i>
+              <h3 class="font-sans text-xs font-bold text-white uppercase tracking-wider">Mission Status Board & Tracker</h3>
+            </div>
+
+            <!-- MISSION TILES IN A ROW (Injected dynamically) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="mission-status-board-container">
+              <!-- Injected by JavaScript -->
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- TAB: MEMBERS & ORGANIZATIONAL RANKS -->
+      <div id="tab-content-members" class="tab-pane hidden space-y-6">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 text-[#938ea1] font-mono text-[10px] mb-1">
+              <span>HQ</span><span>&gt;</span><span class="text-[#22C55E] font-bold">ORGANIZATION DIRECTORY (สารบบสมาชิกและระบบยศ)</span>
+            </div>
+            <h2 class="font-sans text-xl font-bold text-white tracking-tight font-black">Feline Command Members & Rank Appointments</h2>
+          </div>
+
+          <!-- Admin Mode switch -->
+          <div class="flex items-center gap-3 bg-[#14121b] border-2 border-[#484555] px-4 py-2 rounded">
+            <span class="font-mono text-xs text-gray-400">ADMIN MODE / โหมดแอดมิน:</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="admin-mode-toggle" onchange="toggleAdminMode()" class="sr-only peer">
+              <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#22C55E]"></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <!-- Left: Members Grid/List -->
+          <div class="lg:col-span-8 bg-[#1A1D27]/80 border-2 border-[#484555] rounded shadow-lg p-5 space-y-4">
+            <h3 class="font-sans text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#484555] pb-2">
+              <i data-lucide="users" class="w-4 h-4 text-[#22C55E]"></i> Active Personnel Directory
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="members-list-container">
+              <!-- Injected by JavaScript -->
+            </div>
+          </div>
+
+          <!-- Right: Rank system legend and appointment panel -->
+          <div class="lg:col-span-4 bg-[#1A1D27]/80 border-2 border-[#484555] rounded shadow-lg p-5 space-y-4 font-mono text-xs">
+            <h3 class="font-sans text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[#484555] pb-2">
+              <i data-lucide="award" class="w-4 h-4 text-[#F59E0B]"></i> Rank Hierarchy & Role Descriptions
+            </h3>
+
+            <div class="space-y-3 text-[11px] leading-relaxed">
+              <div class="p-2.5 bg-black/30 border border-white/5 rounded-md">
+                <span class="font-bold text-[#EF4444]">👑 CEO (Chief Executive Officer)</span>
+                <p class="text-gray-400 mt-0.5">ประธานอาวุโสสูงสุด มีอำนาจตัดสินใจเด็ดขาดเกี่ยวกับคลังปลาทูน่าและกองกำลังสายลับแมว</p>
+              </div>
+              <div class="p-2.5 bg-black/30 border border-white/5 rounded-md">
+                <span class="font-bold text-[#F59E0B]">🌟 COMMANDER (ผู้บัญชาการหน่วย)</span>
+                <p class="text-gray-400 mt-0.5">ผู้นำฝ่ายเทคนิค แผนกซอฟต์แวร์ แฮกเกอร์ระบบ และคุมพิกัดภูมิศาสตร์สากล</p>
+              </div>
+              <div class="p-2.5 bg-black/30 border border-white/5 rounded-md">
+                <span class="font-bold text-[#cabeff]">⚡ ELITE (สายลับระดับพระกาฬ)</span>
+                <p class="text-gray-400 mt-0.5">เจ้าหน้าที่วิเคราะห์ข้อมูลระดับสูง ความชำนาญการเทรดสกิน CS2 และวิจัยกัญชาแมว (Catnip)</p>
+              </div>
+              <div class="p-2.5 bg-black/30 border border-white/5 rounded-md">
+                <span class="font-bold text-[#3b82f6]">🛡️ AGENT (สายลับปฏิบัติการหลัก)</span>
+                <p class="text-gray-400 mt-0.5">สายลับแมวประจำการพร้อมรบในส่วนงานต่างๆ ตอบสนองเหตุฉุกเฉินและปฏิบัติงานภาคสนาม</p>
+              </div>
+              <div class="p-2.5 bg-black/30 border border-white/5 rounded-md">
+                <span class="font-bold text-gray-400">🐾 RECRUIT (สมาชิกทดลองงาน)</span>
+                <p class="text-gray-400 mt-0.5">ผู้สมัครเข้าสู่ระบบใหม่ที่ล็อกอิน Gmail เข้าร่วมองค์กร รอการแต่งตั้งยศอย่างเป็นทางการโดยแอดมิน</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: MARKETING STRATEGY -->
+      <div id="tab-content-marketing" class="tab-pane hidden space-y-6">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2">
+          <div>
+            <div class="flex items-center gap-2 text-[#938ea1] font-mono text-[10px] mb-1">
+              <span>HQ</span><span>&gt;</span><span class="text-[#FF61D2] font-bold">Marketing Strategy (แผนกการตลาด)</span>
+            </div>
+            <h2 class="font-sans text-xl font-bold text-white tracking-tight">Marketing Command Center</h2>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div class="bg-[#1A1D27]/80 backdrop-blur-md border-2 border-[#484555] p-4 flex items-center gap-4 rounded">
+            <div class="bg-[#2D1B4E] p-3 border-2 border-[#FF61D2] rounded"><i data-lucide="smile" class="text-[#FF61D2] w-5 h-5"></i></div>
+            <div>
+              <p class="font-mono text-[10px] text-[#c9c4d8]">Total Engagement</p>
+              <span class="font-sans text-lg font-bold text-white">2.4M Clicks</span>
+            </div>
+          </div>
+          <div class="bg-[#1A1D27]/80 backdrop-blur-md border-2 border-[#484555] p-4 flex items-center gap-4 rounded">
+            <div class="bg-[#2D1B4E] p-3 border-2 border-[#cabeff] rounded"><i data-lucide="rocket" class="text-[#cabeff] w-5 h-5"></i></div>
+            <div>
+              <p class="font-mono text-[10px] text-[#c9c4d8]">Active Campaigns</p>
+              <span class="font-sans text-lg font-bold text-white">4 Live Missions</span>
+            </div>
+          </div>
+          <div class="bg-[#1A1D27]/80 backdrop-blur-md border-2 border-[#484555] p-4 flex items-center gap-4 rounded">
+            <div class="bg-[#2D1B4E] p-3 border-2 border-[#F59E0B] rounded"><i data-lucide="users" class="text-[#F59E0B] w-5 h-5"></i></div>
+            <div>
+              <p class="font-mono text-[10px] text-[#c9c4d8]">Sentiment Analysis</p>
+              <span class="font-sans text-lg font-bold text-white">98% Purr-fect</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Marketing campaigns list -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <div class="lg:col-span-7 bg-[#1A1D27]/80 border-2 border-[#484555] rounded p-5 space-y-4">
+            <h3 class="font-sans text-sm font-bold text-white uppercase tracking-wider border-b border-[#484555] pb-2 flex items-center gap-1.5">
+              <i data-lucide="megaphone" class="text-[#FF61D2] w-4.5 h-4.5"></i> Campaign Mission Board
+            </h3>
+            
+            <div class="space-y-4">
+              <!-- Tuna -->
+              <div onclick="boostCampaign('tuna')" class="p-4 bg-[#1c1a24] border-2 border-[#484555] hover:border-[#FF61D2] rounded transition-all cursor-pointer">
+                <div class="flex justify-between items-start mb-2">
+                  <h4 class="font-bold text-white text-sm">Project Tuna Delish</h4>
+                  <span class="text-[9px] bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 px-1.5 py-0.5 rounded font-bold">RUNNING</span>
+                </div>
+                <p class="font-mono text-[10px] text-gray-400 mb-2">Click card to boost progress and engagement</p>
+                <div class="h-3 bg-black/60 p-0.5 rounded overflow-hidden">
+                  <div id="campaign-bar-tuna" class="h-full bg-[#FF61D2]" style="width: 82%;"></div>
+                </div>
+              </div>
+              
+              <!-- Yarn -->
+              <div onclick="boostCampaign('yarn')" class="p-4 bg-[#1c1a24] border-2 border-[#484555] hover:border-[#FF61D2] rounded transition-all cursor-pointer">
+                <div class="flex justify-between items-start mb-2">
+                  <h4 class="font-bold text-white text-sm">Viral Yarn Tangle Video</h4>
+                  <span class="text-[9px] bg-[#cabeff]/15 text-[#cabeff] border border-[#cabeff]/30 px-1.5 py-0.5 rounded font-bold">BOOSTING</span>
+                </div>
+                <p class="font-mono text-[10px] text-gray-400 mb-2">Click card to boost progress and engagement</p>
+                <div class="h-3 bg-black/60 p-0.5 rounded overflow-hidden">
+                  <div id="campaign-bar-yarn" class="h-full bg-[#cabeff]" style="width: 45%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 bg-[#1A1D27]/80 border-2 border-[#484555] rounded p-5">
+            <h3 class="font-sans text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-1.5">
+              <i data-lucide="image" class="w-4 h-4 text-[#FF61D2]"></i> Marketing Visual Asset
+            </h3>
+            <div class="aspect-video bg-black border border-[#484555] rounded overflow-hidden relative group">
+              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuAM2gNhdZLvK6bnpEw16EqpW00XEdPQQxRFCuv6ciHgc7pHUe7DPfcJRLxRLNmI261PKKfL_xNXZCnvpRP-IPgTn0cFd391Og-BGWDcrHQ8mp_LA6VoglVGb2Kkd91BMoayoobJOIcBQk48VIcvK0C3tPZf3-jnsFkRjjHh1DKBdOi8xdBAHaNrwres33Uwje7T2cc4oI4V-Dorb5q5V6kb4ZJr_eNXwagyaCsbxAxqQHESMPXUXNSF0I9nOcRogGj3ui4fGiUYfDAo" 
+                   class="w-full h-full object-cover" alt="Campaign visual">
+            </div>
+            <p class="text-[10px] font-mono text-gray-400 mt-2.5">FILE: TUNA_PROMO_V1.MP4 (Active deployment)</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: SKIN TRADING LOG -->
+      <div id="tab-content-finance" class="tab-pane hidden space-y-6">
+        <!-- Dashboard overview metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div class="bg-[#1A1D27] border-2 border-[#484555] p-4 rounded border-t-4 border-t-[#7c5cfc]">
+            <span class="text-[10px] font-mono text-gray-400 uppercase font-bold">PORTFOLIO VALUE</span>
+            <p class="text-xl font-bold font-mono text-[#cabeff] mt-1" id="metric-portfolio-value">฿0</p>
+          </div>
+          <div class="bg-[#1A1D27] border-2 border-[#484555] p-4 rounded border-t-4 border-t-[#22C55E]">
+            <span class="text-[10px] font-mono text-gray-400 uppercase font-bold">NET PROFIT (หลังหักค่าธรรมเนียม)</span>
+            <p class="text-xl font-bold font-mono text-[#22C55E] mt-1" id="metric-net-profit">฿0</p>
+          </div>
+          <div class="bg-[#1A1D27] border-2 border-[#484555] p-4 rounded border-t-4 border-t-[#F59E0B]">
+            <span class="text-[10px] font-mono text-gray-400 uppercase font-bold">ACTIVE SKINS COUNT</span>
+            <p class="text-xl font-bold font-mono text-[#F59E0B] mt-1" id="metric-active-count">0 ชิ้น</p>
+          </div>
+          <div class="bg-[#1A1D27] border-2 border-[#484555] p-4 rounded border-t-4 border-t-[#3b82f6]">
+            <span class="text-[10px] font-mono text-gray-400 uppercase font-bold">EXCHANGE RATE THB/USD</span>
+            <p class="text-xl font-bold font-mono text-[#3b82f6] mt-1">฿36.50</p>
+          </div>
+        </div>
+
+        <!-- Global Fee settings slider -->
+        <div class="bg-[#1A1D27] border border-[#484555] p-4 flex flex-wrap items-center justify-between gap-5 rounded">
+          <span class="font-mono text-xs text-[#c9c4d8] font-bold flex items-center gap-1.5"><i data-lucide="sliders" class="w-4 h-4 text-[#cabeff]"></i> GLOBAL FEE SETTINGS</span>
+          <div class="flex items-center gap-6 flex-wrap flex-1 justify-end">
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-gray-400 font-mono">CSFloat (ซื้อ):</span>
+              <input type="range" min="0" max="10" step="0.5" value="2.0" id="global-buy-fee" oninput="updateGlobalFees()" class="accent-[#7c5cfc] h-1.5 w-24 bg-black rounded">
+              <span class="text-xs font-bold text-[#7c5cfc] font-mono w-8" id="lbl-buy-fee">2.0%</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="text-xs text-gray-400 font-mono">CSGOEmpire (ขาย):</span>
+              <input type="range" min="0" max="15" step="0.5" value="5.0" id="global-sell-fee" oninput="updateGlobalFees()" class="accent-[#22C55E] h-1.5 w-24 bg-black rounded">
+              <span class="text-xs font-bold text-[#22C55E] font-mono w-8" id="lbl-sell-fee">5.0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table list + ROI Quick Calculator -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <div class="xl:col-span-2 bg-[#1A1D27]/80 border-2 border-[#484555] rounded flex flex-col h-[520px] overflow-hidden shadow-lg">
+            <div class="p-4 border-b border-[#484555] bg-black/20 flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <i data-lucide="database" class="text-[#F59E0B] w-4.5 h-4.5"></i>
+                <h3 class="font-sans text-sm font-bold text-white uppercase tracking-wider">SKIN TRADING DATABASE</h3>
+              </div>
+              <button onclick="openTradeModal(false)" class="bg-[#cabeff] text-[#32009a] font-bold text-[10px] font-mono px-3 py-1.5 rounded flex items-center gap-1 cursor-pointer hover:brightness-110 active:translate-y-px">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i> NEW SKIN
+              </button>
+            </div>
+
+            <!-- Skins Table list -->
+            <div class="flex-1 overflow-auto bg-[#0F1117]/30">
+              <table class="w-full text-left font-mono text-xs">
+                <thead class="bg-[#1A1D27] text-gray-400 border-b border-[#484555]/60 sticky top-0 z-10">
+                  <tr>
+                    <th class="px-4 py-3 font-bold">SKIN NAME</th>
+                    <th class="px-4 py-3 font-bold">BUY DATE</th>
+                    <th class="px-4 py-3 font-bold">BUY PRICE</th>
+                    <th class="px-4 py-3 font-bold">SELL PRICE</th>
+                    <th class="px-4 py-3 font-bold">NET PROFIT</th>
+                    <th class="px-4 py-3 font-bold">STATUS</th>
+                    <th class="px-4 py-3 font-bold"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#484555]/30" id="trades-table-body">
+                  <!-- Trades injected here -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Filters footer bar -->
+            <div class="p-3 border-t border-[#484555] bg-black/10 flex items-center justify-between gap-4 flex-wrap">
+              <div class="flex gap-2" id="filter-container">
+                <button onclick="setTradeFilter('all')" class="filter-btn px-3 py-1 bg-[#cabeff] text-[#32009a] font-mono text-[10px] font-bold rounded border border-[#cabeff]" data-filter="all">☰ ALL</button>
+                <button onclick="setTradeFilter('holding')" class="filter-btn px-3 py-1 bg-black/40 text-gray-400 font-mono text-[10px] font-bold rounded border border-[#484555]/80" data-filter="holding">📦 HOLDING</button>
+                <button onclick="setTradeFilter('sold')" class="filter-btn px-3 py-1 bg-black/40 text-gray-400 font-mono text-[10px] font-bold rounded border border-[#484555]/80" data-filter="sold">✔ SOLD</button>
+                <button onclick="setTradeFilter('overdue')" class="filter-btn px-3 py-1 bg-black/40 text-gray-400 font-mono text-[10px] font-bold rounded border border-[#484555]/80" data-filter="overdue">▲ OVERDUE</button>
+              </div>
+              <span id="filtered-items-count" class="font-mono text-[10px] text-gray-400">0 ITEMS</span>
+            </div>
+          </div>
+
+          <!-- Quick ROI Sidebar -->
+          <div class="bg-[#1A1D27]/80 border-2 border-[#484555] p-5 rounded flex flex-col justify-between">
+            <div class="space-y-4">
+              <h3 class="font-sans text-sm font-bold text-white uppercase tracking-wider border-b border-[#484555] pb-2 flex items-center gap-1.5">
+                <i data-lucide="calculator" class="text-[#cabeff] w-4.5 h-4.5"></i> ROI Calculator
+              </h3>
+              
+              <div>
+                <label class="block font-mono text-[10px] text-gray-400 font-bold mb-1">PURCHASE PRICE (USD)</label>
+                <input type="number" id="calc-buy" value="100.00" oninput="calculateRoiSidebar()" class="w-full bg-[#0F1117] border-2 border-[#484555] rounded font-bold font-mono px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block font-mono text-[10px] text-gray-400 font-bold mb-1">TARGET SELL PRICE (USD)</label>
+                <input type="number" id="calc-sell" value="125.00" oninput="calculateRoiSidebar()" class="w-full bg-[#0F1117] border-2 border-[#484555] rounded font-bold font-mono px-3 py-2 text-white focus:border-[#F59E0B] focus:outline-none">
+              </div>
+
+              <div class="space-y-2.5 pt-2">
+                <div class="flex justify-between font-mono text-xs">
+                  <span class="text-gray-400">Total Cost (รวมค่าซื้อ):</span>
+                  <span class="text-white font-bold" id="calc-lbl-cost">$102.00</span>
+                </div>
+                <div class="flex justify-between font-mono text-xs">
+                  <span class="text-gray-400">Payout (รายรับหักฟี):</span>
+                  <span class="text-[#F59E0B] font-bold" id="calc-lbl-payout">$118.75</span>
+                </div>
+                <div class="border-t border-[#484555]/30 pt-2 flex justify-between items-center font-mono">
+                  <span class="font-bold text-gray-300">NET PROFIT:</span>
+                  <span class="text-base font-bold text-[#22C55E]" id="calc-lbl-profit">+$16.75</span>
+                </div>
+                <div class="flex justify-between font-mono text-xs">
+                  <span class="text-gray-400">ESTIMATED ROI:</span>
+                  <span class="text-[#22C55E] font-bold" id="calc-lbl-roi">16.42%</span>
+                </div>
+              </div>
+            </div>
+
+            <button onclick="addSimulatedTrade()" class="w-full mt-5 py-3.5 bg-[#cabeff] text-[#32009a] font-sans font-bold text-xs uppercase shadow-[0_4px_0_0_#4918c8] hover:translate-y-px hover:shadow-[0_2px_0_0_#4918c8] active:translate-y-0.5 active:shadow-none transition-all rounded">
+              SIMULATE & ADD TO DB
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: RISK ANALYZER -->
+      <div id="tab-content-risk" class="tab-pane hidden space-y-6">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 text-[#938ea1] font-mono text-[10px] mb-1">
+              <span>HQ</span><span>&gt;</span><span class="text-[#EF4444] font-bold">Risk Management (บริหารความเสี่ยง)</span>
+            </div>
+            <h2 class="font-sans text-xl font-bold text-white tracking-tight">Risk & ROI Analyzer</h2>
+          </div>
+        </div>
+
+        <!-- Analyzer dual grid config -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+          <!-- Buy Side Config -->
+          <div class="bg-[#1A1D27]/80 border-2 border-[#484555] p-5 rounded relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-[3px] bg-[#7c5cfc]"></div>
+            <h3 class="font-sans text-sm font-bold text-[#cabeff] uppercase tracking-wider mb-4">🛒 ซื้อจาก CSFLOAT</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="block font-mono text-[10px] text-gray-400 font-bold mb-1.5">ราคาซื้อจริง (USD)</label>
+                <input type="number" id="risk-buy-price" value="1000" oninput="runRiskAnalyzer()" class="w-full bg-[#0F1117] border-2 border-[#484555] rounded font-bold font-mono px-3 py-2 text-white focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-mono text-[10px] text-gray-400 font-bold mb-1.5">ค่าซื้อฟี (%)</label>
+                <input type="number" id="risk-buy-fee" value="2.0" oninput="runRiskAnalyzer()" class="w-full bg-[#0F1117] border-2 border-[#484555] rounded font-bold font-mono px-3 py-2 text-white focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- Sell Side Config -->
+          <div class="bg-[#1A1D27]/80 border-2 border-[#484555] p-5 rounded relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-[3px] bg-[#22C55E]"></div>
+            <h3 class="font-sans text-sm font-bold text-[#22C55E] uppercase tracking-wider mb-4">💰 ขายบน CSGOEMPIRE</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="block font-mono text-[10px] text-gray-400 font-bold mb-1.5">ราคาตั้งขาย (USD)</label>
+                <input type="number" id="risk-sell-price" value="1250" oninput="runRiskAnalyzer()" class="w-full bg-[#0F1117] border-2 border-[#484555] rounded font-bold font-mono px-3 py-2 text-white focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-mono text-[10px] text-gray-400 font-bold mb-1.5">ค่าธรรมเนียมผู้ขาย (%)</label>
+                <input type="number" id="risk-sell-fee" value="5.0" oninput="runRiskAnalyzer()" class="w-full bg-[#0F1117] border-2 border-[#484555] rounded font-bold font-mono px-3 py-2 text-white focus:outline-none">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analyzer Results -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-[#1A1D27] border border-[#484555] p-4 text-center rounded">
+            <p class="font-mono text-[10px] text-gray-400">NET PROFIT (USD)</p>
+            <p class="text-xl font-bold font-mono text-[#22C55E] mt-1" id="risk-res-profit-usd">+$167.50</p>
+          </div>
+          <div class="bg-[#1A1D27] border border-[#484555] p-4 text-center rounded">
+            <p class="font-mono text-[10px] text-gray-400">NET PROFIT (THB)</p>
+            <p class="text-xl font-bold font-mono text-[#22C55E] mt-1" id="risk-res-profit-thb">฿6,113</p>
+          </div>
+          <div class="bg-[#1A1D27] border border-[#484555] p-4 text-center rounded">
+            <p class="font-mono text-[10px] text-gray-400">ESTIMATED ROI (%)</p>
+            <p class="text-xl font-bold font-mono text-[#22C55E] mt-1" id="risk-res-roi">16.42%</p>
+          </div>
+          <div class="bg-[#1A1D27] border border-[#484555] p-4 text-center rounded">
+            <p class="font-mono text-[10px] text-gray-400">⚖ BREAK-EVEN PRICE</p>
+            <p class="text-xl font-bold font-mono text-[#F59E0B] mt-1" id="risk-res-breakeven">$1,073.68</p>
+          </div>
+        </div>
+
+        <div class="bg-[#1A1D27] border border-[#F59E0B]/30 p-3.5 text-xs font-mono text-gray-300 flex items-center gap-3 rounded">
+          <i data-lucide="help-circle" class="w-5 h-5 text-[#F59E0B]"></i>
+          <div>
+            <span class="font-bold text-[#F59E0B]">คำอธิบาย:</span> 
+            คุณต้องลงประกาศขายสกินนี้ในราคาไม่ต่ำกว่า <span class="text-[#F59E0B] font-bold id-lbl" id="risk-lbl-breakeven-explain">$1,073.68</span> เพื่อให้ได้ทุนคืนทั้งหมดพอดีหลังหักค่าธรรมเนียมการขาย
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: OPERATIONS ROSTER -->
+      <div id="tab-content-operations" class="tab-pane hidden space-y-6">
+        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 text-[#938ea1] font-mono text-[10px] mb-1">
+              <span>HQ</span><span>&gt;</span><span class="text-[#3b82f6] font-bold uppercase">Operations Hub (ศูนย์ยุทธการมอบหมายงาน)</span>
+            </div>
+            <h2 class="font-sans text-xl font-bold text-white tracking-tight">Tactical Roster & Custom Briefings</h2>
+          </div>
+          
+          <div class="flex gap-2">
+            <button 
+              onclick="toggleNewMissionForm()"
+              class="px-4 py-2 bg-[#22C55E] text-black font-sans font-black text-xs uppercase tracking-wider rounded flex items-center gap-2 cursor-pointer shadow-[0_3px_0_0_#15803d]"
+            >
+              <i data-lucide="plus-circle" class="w-4 h-4 text-black"></i> มอบหมายภารกิจใหม่
+            </button>
+          </div>
+        </div>
+
+        <!-- Create custom mission panel (ขยายกรอกข้อมูลขอบเขตงาน) -->
+        <div id="custom-mission-form-container" class="bg-[#1A1D27] border-2 border-[#22C55E]/60 p-5 rounded-lg shadow-xl relative font-mono text-xs text-[#e6e0ee] hidden">
+          <div class="absolute top-0 left-0 w-full h-[3px] bg-[#22C55E]" />
+          <h3 class="font-sans text-sm font-black text-[#22C55E] mb-4 uppercase tracking-wider flex items-center gap-2">
+            <span>📋 สร้างขอบเขตภารกิจใหม่ & แจ้งเตือนสมาชิลับ</span>
+          </h3>
+
+          <form onsubmit="handleCreateMission(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-gray-400 font-bold mb-1 uppercase text-[10px]">ชื่อภารกิจ / Mission Title</label>
+              <input 
+                type="text" 
+                id="new-mission-title"
+                required
+                placeholder="เช่น แฮกไฟล์ความรู้สกิน หรือ นั่งทับคีย์บอร์ดความถี่สูง" 
+                class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#22C55E] focus:outline-none"
+              >
+            </div>
+
+            <div>
+              <label class="block text-gray-400 font-bold mb-1 uppercase text-[10px]">สายลับปฏิบัติการหลัก</label>
+              <select 
+                id="new-mission-agent"
+                class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2.5 text-white focus:border-[#22C55E] focus:outline-none"
+              >
+                <!-- Filled dynamically by JS -->
+              </select>
+            </div>
+
+            <div class="col-span-1 md:col-span-2">
+              <label class="block text-gray-400 font-bold mb-1 uppercase text-[10px]">ขอบเขตงานและรายละเอียดเป้าหมาย / Scope of Work</label>
+              <textarea 
+                rows="3"
+                id="new-mission-objective"
+                required
+                placeholder="กรอกรายละเอียดเป้าหมาย ขอบเขตงาน และสิ่งที่สายลับแมวต้องทำอย่างเป็นขั้นตอน..."
+                class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#22C55E] focus:outline-none"
+              ></textarea>
+            </div>
+
+            <div>
+              <label class="block text-gray-400 font-bold mb-1 uppercase text-[10px]">ระดับความเร่งด่วน / Priority</label>
+              <select 
+                id="new-mission-priority"
+                class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#22C55E] focus:outline-none"
+              >
+                <option value="LOW">LOW (ความสำคัญระดับต่ำ - นอนกลิ้ง)</option>
+                <option value="MEDIUM">MEDIUM (สำคัญปานกลาง - ขโมยขนม)</option>
+                <option value="HIGH" selected>HIGH (ความสำคัญสูง - คลุกฝุ่นข้อมูล)</option>
+                <option value="CRITICAL">CRITICAL (ฉุกเฉินสูงสุด - ประธานตามด่วน!)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-gray-400 font-bold mb-1 uppercase text-[10px]">ค่าตอบแทนกองกลาง (฿) / Payout</label>
+              <input 
+                type="number" 
+                id="new-mission-payout"
+                value="1200"
+                class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#22C55E] focus:outline-none"
+              >
+            </div>
+
+            <div>
+              <label class="block text-gray-400 font-bold mb-1 uppercase text-[10px]">เป้าหมายเวลาเสร็จสิ้น / Target Deadline</label>
+              <input 
+                type="text" 
+                id="new-mission-deadline"
+                value="04h 30m"
+                placeholder="เช่น 02h 45m หรือ 12h 00m" 
+                class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#22C55E] focus:outline-none"
+              >
+            </div>
+
+            <div>
+              <label class="block text-gray-400 font-bold mb-1 uppercase text-[10px]">ส่งอีเมลแจ้งเตือนไปยังสมาชิก (Gmail)</label>
+              <input 
+                type="email" 
+                id="new-mission-email"
+                placeholder="เช่น support.agent@gmail.com" 
+                class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-[#22C55E] focus:border-[#22C55E] focus:outline-none font-bold"
+              >
+            </div>
+
+            <div class="col-span-1 md:col-span-2 flex justify-end gap-3 mt-2">
+              <button 
+                type="button" 
+                onclick="toggleNewMissionForm()"
+                class="px-4 py-2 border border-[#484555] text-gray-400 hover:text-white rounded hover:bg-white/5 font-sans"
+              >
+                ยกเลิก / Cancel
+              </button>
+              <button 
+                type="submit" 
+                class="px-5 py-2 bg-[#22C55E] text-black hover:brightness-110 font-bold rounded font-sans"
+              >
+                ลงทะเบียน & แจ้งเตือนสมาชิกลับ
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+          <!-- Left Column: Agent Roster -->
+          <div class="xl:col-span-4 bg-[#1A1D27]/80 border-2 border-[#484555] rounded-lg shadow-lg overflow-hidden">
+            <div class="p-4 bg-black/25 border-b border-[#484555] flex justify-between items-center">
+              <span class="font-sans text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <i data-lucide="user-check" class="w-4 h-4 text-[#cabeff]"></i> Feline Agent Roster
+              </span>
+              <span class="font-mono text-[10px] text-gray-400" id="roster-count-label">(0 AGENTS)</span>
+            </div>
+            
+            <div class="p-4 space-y-3" id="agents-list-container">
+              <!-- Agents injected by Javascript -->
+            </div>
+          </div>
+
+          <!-- Center: Interactive Mission Control -->
+          <div class="xl:col-span-8 bg-[#1A1D27]/80 border-2 border-[#484555] rounded-lg shadow-lg overflow-hidden flex flex-col justify-between">
+            <div>
+              <div class="p-4 bg-black/25 border-b border-[#484555] flex justify-between items-center">
+                <span class="font-sans text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <i data-lucide="target" class="w-4 h-4 text-[#F59E0B]"></i> ACTIVE MISSION TRACKER & LAUNCHER
+                </span>
+              </div>
+
+              <div class="p-5 space-y-4">
+                <!-- Mission Tabs Container -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[110px] overflow-y-auto pr-1" id="missions-tabs-container">
+                  <!-- Mission buttons -->
+                </div>
+
+                <!-- Mission Briefing Content -->
+                <div id="mission-brief-content" class="space-y-4 pt-2">
+                  <!-- Mission detail content injected here -->
+                </div>
+              </div>
+            </div>
+
+            <div class="p-4 border-t border-[#484555] bg-black/15">
+              <button onclick="deploySelectedAgent()" id="deploy-agent-btn" class="w-full py-3 bg-[#cabeff] text-[#32009a] font-sans font-black text-xs uppercase shadow-[0_4px_0_0_#4918c8] hover:translate-y-px hover:shadow-[0_2px_0_0_#4918c8] active:translate-y-0.5 active:shadow-none transition-all rounded flex items-center justify-center gap-2">
+                <i data-lucide="navigation" class="w-4 h-4"></i> DEPLOY AGENT TO CHOSEN TARGET
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 6: GOOGLE APPS SCRIPT / GOOGLE SHEETS SETUP -->
+      <div id="tab-content-sheets" class="tab-pane hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <!-- Sync controls -->
+          <div class="lg:col-span-7 bg-[#1A1D27]/80 border-2 border-[#484555] p-5 rounded-lg flex flex-col justify-between min-h-[440px]">
+            <div class="space-y-5">
+              <h3 class="font-sans text-sm font-bold text-[#10B981] uppercase tracking-wider border-b border-[#484555] pb-3 flex items-center gap-1.5">
+                <i data-lucide="database" class="text-[#10B981] w-4.5 h-4.5"></i> เชื่อมต่อ Google Apps Script
+              </h3>
+
+              <div class="bg-[#10B981]/10 border border-[#10B981]/30 p-4 rounded text-xs text-gray-300 space-y-2">
+                <span class="text-[#10B981] font-bold block">💡 ข้อมูลสำคัญเกี่ยวกับระบบ Apps Script:</span>
+                <p>เมื่อนำไฟล์ HTML นี้ไปสร้างเว็บแอปใน Google Apps Script หน้าเว็บบอร์ดเทอร์มินัลนี้จะเชื่อมต่อข้อมูลจากตาราง Google Sheet ของคุณได้ทันทีผ่าน API ของ Google Apps Script โดยตรง</p>
+              </div>
+
+              <div class="space-y-2">
+                <label class="block font-mono text-xs text-gray-300 font-bold uppercase">Google Sheets CSV Published Link หรือ Web App URL</label>
+                <input type="text" id="sheets-api-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-[#0F1117] border-2 border-[#484555] rounded font-mono text-xs p-3 text-white focus:border-[#10B981] focus:outline-none">
+                <p class="font-mono text-[10px] text-gray-500">ใส่ลิงก์ Web App URL ที่ได้จากขั้นตอนการติดตั้ง Apps Script ด้านขวา</p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button onclick="syncGasNow(false)" class="py-3 bg-[#10B981] text-black font-sans font-bold text-xs uppercase rounded flex items-center justify-center gap-1.5 cursor-pointer hover:brightness-110">
+                  <i data-lucide="refresh-cw" class="w-4 h-4"></i> ดึงข้อมูลจริงจากชีตตอนนี้
+                </button>
+                <button onclick="syncGasNow(true)" class="py-3 bg-[#cabeff] text-[#32009a] font-sans font-bold text-xs uppercase rounded flex items-center justify-center gap-1.5 cursor-pointer hover:brightness-110">
+                  <i data-lucide="play" class="w-4 h-4"></i> ใช้ข้อมูลจำลอง (Demo CSV)
+                </button>
+              </div>
+            </div>
+
+            <!-- Sync progress feedback logs -->
+            <div class="mt-6 pt-4 border-t border-[#484555]/50">
+              <div id="gas-sync-status" class="bg-black/20 border border-[#484555]/40 p-4 rounded font-mono text-xs text-center text-gray-500">
+                คลังสินค้ากำลังเชื่อมข้อมูลด้วย LOCAL STORAGE
+              </div>
+            </div>
+          </div>
+
+          <!-- Integration setup instruction guide -->
+          <div class="lg:col-span-5 bg-[#1A1D27]/80 border-2 border-[#484555] p-5 rounded-lg space-y-4">
+            <h3 class="font-sans text-xs font-bold text-white uppercase tracking-wider border-b border-[#484555] pb-2">
+              📋 วิธีสร้าง Web App และเอาไปแปะใน Google Apps Script
+            </h3>
+
+            <div class="space-y-3.5 text-[11px] leading-relaxed text-[#c9c4d8]/85 font-mono">
+              <ol class="space-y-3 list-decimal list-inside">
+                <li>เปิด Google Sheet ของคุณ</li>
+                <li>ไปที่ <span class="text-white font-bold">Extensions (ส่วนขยาย)</span> &gt; <span class="text-white font-bold">Apps Script</span></li>
+                <li>สร้างไฟล์ใหม่ชื่อ <code class="text-[#10B981]">Index.html</code> แล้วคัดลอกโค้ดของไฟล์นี้ทั้งหมดไปวาง</li>
+                <li>ที่ไฟล์ <code class="text-white">Code.gs</code> วางสคริปต์นี้เพื่อเปิดแสดงหน้าเว็บ:</li>
+              </ol>
+
+              <pre class="bg-black/50 p-2.5 border border-[#484555] rounded text-[9.5px] text-[#10B981] overflow-x-auto select-all">
+function doGet(e) {
+  // ระบบป้องกันข้อผิดพลาดกรณีตัวอักษรพิมพ์เล็ก-ใหญ่ไม่ตรงกัน (Index.html vs index.html)
+  try {
+    return HtmlService.createTemplateFromFile('Index')
+      .evaluate()
+      .setTitle('Feline Command Terminal')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } catch (err) {
+    try {
+      return HtmlService.createTemplateFromFile('index')
+        .evaluate()
+        .setTitle('Feline Command Terminal')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    } catch (err2) {
+      return HtmlService.createHtmlOutput(
+        "<h2>❌ ไม่พบไฟล์ HTML ในระบบ Google Apps Script</h2>" +
+        "<p>กรุณาตรวจสอบว่าคุณได้สร้างไฟล์ HTML และตั้งชื่อให้ตรงกับสคริปต์ Code.gs แล้วหรือยัง:</p>" +
+        "<ul>" +
+        "<li><b>วิธีที่ 1:</b> ตั้งชื่อไฟล์ HTML ว่า <code>Index.html</code> (I ตัวใหญ่)</li>" +
+        "<li><b>วิธีที่ 2:</b> หากไฟล์ HTML ของคุณชื่อ <code>index.html</code> (i ตัวเล็ก) ให้แก้ไขไฟล์ Code.gs บรรทัดที่ 4 จาก 'Index' เป็น 'index'</li>" +
+        "</ul>"
+      );
+    }
+  }
+}
+
+// ฟังก์ชันดึงข้อมูลจากตาราง Google Sheets ส่งไปยังหน้าเว็บ
+function getTradesData() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var rows = sheet.getDataRange().getValues();
+  return rows; // ส่งข้อมูลเป็น Array ไปยังหน้าเว็บ
+}
+              </pre>
+
+              <ol start={5} class="space-y-3 list-decimal list-inside">
+                <li>กด <span class="text-white font-bold">Deploy (การใช้งาน)</span> &gt; <span class="text-white font-bold">New deployment (การใช้งานใหม่)</span></li>
+                <li>เลือกเป็น <span class="text-[#10B981] font-bold">Web App (เว็บแอป)</span></li>
+                <li>กำหนดสิทธิ์ให้ <span class="text-[#10B981] font-bold">Everyone (ทุกคน)</span> สามารถเข้าถึงได้</li>
+                <li>คัดลอก Web App URL ไปใช้งาน!</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ADD / EDIT TRADE MODAL OVERLAY -->
+  <div id="trade-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 hidden">
+    <div class="bg-[#1A1D27] border-2 border-[#484555] rounded-lg shadow-2xl p-6 w-full max-w-md relative">
+      <div class="absolute top-0 left-0 w-full h-[3px] bg-[#cabeff]"></div>
+      <button onclick="closeTradeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <h2 id="modal-title" class="font-sans text-base font-bold text-[#cabeff] border-b border-[#484555] pb-3 mb-4 uppercase tracking-wider">
+        เพิ่ม Trade รายการใหม่
+      </h2>
+
+      <form id="trade-form" onsubmit="handleTradeFormSubmit(event)" class="space-y-4 font-mono text-xs">
+        <input type="hidden" id="form-id">
+        <div>
+          <label class="block text-gray-400 font-bold mb-1.5">ชื่อ Skin</label>
+          <input type="text" id="form-name" required placeholder="เช่น M9 Bayonet | Gamma Doppler" class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 font-bold mb-1.5">คุณภาพ / Float</label>
+            <input type="text" id="form-wear" required placeholder="เช่น FN (0.01)" class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-gray-400 font-bold mb-1.5">ชนิดสกิน</label>
+            <select id="form-type" class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none">
+              <option value="knife">🔪 Knife</option>
+              <option value="gloves">🧤 Gloves</option>
+              <option value="rifle">🔫 Rifle</option>
+              <option value="pistol">🔫 Pistol</option>
+              <option value="other">🎯 Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 font-bold mb-1.5">ราคาซื้อ ($)</label>
+            <input type="number" step="0.01" id="form-cost" required class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none font-bold">
+          </div>
+          <div>
+            <label class="block text-gray-400 font-bold mb-1.5">ราคาขาย ($) ถ้ามี</label>
+            <input type="number" step="0.01" id="form-sell" placeholder="ยังไม่ขาย" class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none font-bold">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-gray-400 font-bold mb-1.5">วันที่ซื้อ</label>
+            <input type="date" id="form-buy-date" required class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-gray-400 font-bold mb-1.5">วันที่หมดเป้าหมาย</label>
+            <input type="date" id="form-sell-date" required class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-gray-400 font-bold mb-1.5">สถานะการเทรด</label>
+          <select id="form-status" class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none">
+            <option value="holding">Holding (ถือครอง)</option>
+            <option value="sold">Sold (ขายแล้ว)</option>
+            <option value="overdue">Overdue (หมดสัญญา)</option>
+          </select>
+        </div>
+
+        <div class="pt-4 border-t border-[#484555] flex justify-end gap-2.5">
+          <button type="button" id="btn-delete-trade" onclick="deleteCurrentTrade()" class="bg-[#EF4444] hover:bg-[#EF4444]/80 text-white font-bold px-4 py-2 rounded hidden">ลบข้อมูล</button>
+          <button type="submit" class="bg-[#cabeff] text-[#32009a] font-bold px-5 py-2 rounded cursor-pointer hover:brightness-110">บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- PROFILE EDIT MODAL OVERLAY -->
+  <div id="profile-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 hidden">
+    <div class="bg-[#1A1D27] border-2 border-[#484555] rounded-lg shadow-2xl p-6 w-full max-w-md relative font-mono text-xs text-[#e6e0ee]">
+      <div class="absolute top-0 left-0 w-full h-[3px] bg-[#cabeff]"></div>
+      <button onclick="closeProfileModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <h2 class="font-sans text-base font-bold text-[#cabeff] border-b border-[#484555] pb-3 mb-4 uppercase tracking-wider">
+        แก้ไขโปรไฟล์ // SECURE USER CORE
+      </h2>
+
+      <form id="profile-form" onsubmit="handleProfileFormSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-gray-400 font-bold mb-1.5 uppercase text-[10px]">ชื่อโปรไฟล์ / Display Name</label>
+          <input type="text" id="profile-input-name" required class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-gray-400 font-bold mb-1.5 uppercase text-[10px]">ตำแหน่ง / Role Title</label>
+          <input type="text" id="profile-input-role" required class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-gray-400 font-bold mb-1.5 uppercase text-[10px]">ระดับ / Rank Level</label>
+          <input type="text" id="profile-input-level" required class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-gray-400 font-bold mb-1.5 uppercase text-[10px]">รูปโปรไฟล์ (Image URL)</label>
+          <input type="text" id="profile-input-image" required class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white focus:border-[#cabeff] focus:outline-none text-[11px]">
+        </div>
+
+        <div>
+          <label class="block text-gray-400 font-bold mb-2 uppercase text-[10px]">เลือกรูปแมวน่ารัก / Feline Presets</label>
+          <div class="grid grid-cols-6 gap-2" id="preset-avatars-grid">
+            <!-- preset buttons will be injected or predefined here -->
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-[#484555] flex justify-end gap-2.5">
+          <button type="button" onclick="closeProfileModal()" class="px-4 py-2 border border-[#484555] text-gray-400 hover:text-white rounded hover:bg-white/5 font-sans">ยกเลิก</button>
+          <button type="submit" class="bg-[#cabeff] text-[#32009a] font-bold px-5 py-2 rounded cursor-pointer hover:brightness-110 font-sans">บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- GMAIL LOGIN MODAL OVERLAY -->
+  <div id="gmail-login-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 hidden">
+    <div class="bg-[#1A1D27] border-2 border-[#4285F4] rounded-lg shadow-2xl p-6 w-full max-w-sm relative font-mono text-xs text-[#e6e0ee]">
+      <div class="absolute top-0 left-0 w-full h-[3px] bg-[#4285F4]"></div>
+      
+      <div class="flex justify-between items-start mb-4 border-b border-[#484555] pb-2">
+        <h3 class="font-sans text-sm font-black text-[#4285F4] uppercase tracking-wider flex items-center gap-2">
+          <span>🔑 CONNECT GMAIL / GOOGLE SECURE</span>
+        </h3>
+        <button onclick="closeGmailLoginModal()" class="text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="gmail-login-form" onsubmit="handleGmailLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-gray-400 font-bold mb-1 uppercase text-[10px]">อีเมล Gmail ของคุณ / Gmail Address</label>
+          <input 
+            type="email" 
+            id="login-email-input"
+            required
+            placeholder="เช่น somchai@gmail.com"
+            class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white text-xs focus:border-[#4285F4] focus:outline-none"
+          >
+        </div>
+
+        <div>
+          <label class="block text-gray-400 font-bold mb-1 uppercase text-[10px]">ชื่อจริง / Display Name</label>
+          <input 
+            type="text" 
+            id="login-name-input"
+            required
+            placeholder="เช่น สมชาย สายส่อง"
+            class="w-full bg-[#0F1117] border border-[#484555] rounded px-3 py-2 text-white text-xs focus:border-[#4285F4] focus:outline-none"
+          >
+        </div>
+
+        <!-- Choose profile pic preset -->
+        <div>
+          <label class="block text-gray-400 font-bold mb-1 uppercase text-[10px]">หรือเลือกแมวสายลับตัวโปรด</label>
+          <div class="grid grid-cols-6 gap-1.5" id="preset-login-avatars">
+            <!-- Filled dynamically by JS -->
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2.5 pt-4 border-t border-[#484555] mt-4 font-sans">
+          <button 
+            type="button"
+            onclick="closeGmailLoginModal()"
+            class="px-3 py-1.5 border border-[#484555] text-gray-400 hover:text-white rounded hover:bg-white/5 font-sans cursor-pointer"
+          >
+            ยกเลิก / Cancel
+          </button>
+          <button 
+            type="submit"
+            class="px-4 py-1.5 bg-[#4285F4] hover:bg-[#357ae8] text-white font-bold rounded font-sans cursor-pointer flex items-center gap-1"
+          >
+            เข้าร่วมองค์กร / Join
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- core app script logics -->
+  <script>
+    // State storage
+    let trades = [];
+    let logs = [];
+    let agents = [];
+    let missions = [];
+    let chats = [];
+    let selectedAgent = null;
+    let selectedMission = null;
+    let currentFilter = 'all';
+
+    // Gmail Security Connection & Administrative Ranks State
+    let isGoogleLoggedIn = localStorage.getItem('gmail_is_logged_in') === 'true';
+    let googleEmail = localStorage.getItem('gmail_email') || '';
+    let googleName = localStorage.getItem('gmail_name') || '';
+    let memberRank = localStorage.getItem('gmail_member_rank') || 'RECRUIT';
+    let isAdminMode = localStorage.getItem('feline_is_admin_mode') === 'true';
+
+    // Predefined Organization Members (Reflecting actual agents)
+    const INITIAL_MEMBERS = [
+      { email: 'ceo.whiskers@gmail.com', name: 'CEO Whiskers', rank: 'CEO', role: 'ประธานอาวุโสสูงสุดคุมคลังปลาทูน่า', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCM8Ve5m3Ih0WqEpktNygSXsTIKBt_1tSLnsVBA6b28Utg_NP-k1kjdR_8uh5oG4FOVK0Xey1O6TMShLP0j_QfJdlNA6kn23AftUcNbHQ7FgdoHCCPFfcuW4c3KJ51Ker5YBAYcEfsj78DAAnCQgsVgZvxQTL22dZy8QjitNhPLfiC6lIKS3kErL7b3sJWxPh91ARijqTAs_OeLWzt1SKJUU0AetsqZqJwCI-G_bXUo6ENSMqRYMfi6U-N-t3e3pmSuIj4RKSykxcrq' },
+      { email: 'data.ginger@gmail.com', name: 'Data Ginger', rank: 'COMMANDER', role: 'ผู้นำฝ่ายเทคนิค แผนกซอฟต์แวร์ และแฮกเกอร์ระบบ', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCY2-l7bvJNXGutOJyFIIYffeqe2F3HkSW4ub0MdCMf3mxd70FqJr_f2orFTI6G7CK-uTI1lx2_mnsVGiYASjMvQOacLrHu6vuOg7J-SzPLotaUN--KPCCFZw8wLnSO3x8bcgiDAAw0SyMcN-Ozdi0x_1bpiVXgBQDxyvI6xtUpNI1MQ3tE0tBwNGGtFdVRkUyjai6c7_BFfgTh0fWojJSinxQobAHL_GW6U3XiWdfdpOT1cNQmWh5y2Bey65HgWrtOV7FOq9KDgSst' },
+      { email: 'tactical.tuxedo@gmail.com', name: 'Tactical Tuxedo', rank: 'ELITE', role: 'สายลับระดับพระกาฬคุมความปลอดภัย Data Core', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCM8Ve5m3Ih0WqEpktNygSXsTIKBt_1tSLnsVBA6b28Utg_NP-k1kjdR_8uh5oG4FOVK0Xey1O6TMShLP0j_QfJdlNA6kn23AftUcNbHQ7FgdoHCCPFfcuW4c3KJ51Ker5YBAYcEfsj78DAAnCQgsVgZvxQTL22dZy8QjitNhPLfiC6lIKS3kErL7b3sJWxPh91ARijqTAs_OeLWzt1SKJUU0AetsqZqJwCI-G_bXUo6ENSMqRYMfi6U-N-t3e3pmSuIj4RKSykxcrq' },
+      { email: 'stealth.calico@gmail.com', name: 'Stealth Calico', rank: 'AGENT', role: 'สายลับตรวจจับสกัดข้อมูลสกินปืนรอบค่ำ', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDZO8rTnSxuzGK-c4bvP_bKC4uyLaBA6ZnDw_K7KUyNdXNfAise5p1glDXi9pze2KGl5733adBT7wpmZQ6ftszjFe29SaVjaCmLbJghmmR58nfcs_CVjLIcHLurWXJlFEto9VZ9OzkXlyYMH49YzkMWtPE40SKa-K8g-zVdMEm0P2_F8tA9vlY-BoGH645juP_wkjvB0ZQyrT9UQHWR60S_03qoB75EjbSI0dW62bUIIUuh38uwhusyKxBiWXPH2bVuCn8Ouxg4MmJv' },
+      { email: 'heavy.coon@gmail.com', name: 'Heavy Maine Coon', rank: 'AGENT', role: 'สายลับฝ่ายลำเลียงพัสดุและวิเคราะห์มูลค่าทองเหลือง', avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDTRjQu_AY4ENFxkmL00xmE5Tw5vPVE7fVavu8tsmCY3yGlwjF-2nClubDsKv9evPawooQ3d9F_odjTnfeYsKYYvh_qzNAj_rF6a_om2QRkqdNfN7PEX6ElbSAPxLMEk6DJbzhlRK_9Wm_DgbQuI_sTn5rgdZfa_SL5yNU7U-DEwrHPua86-Ts3egRj36Kb1lSY2HzHd1DKovUFqSKZK4wBvfOlWwhBV7e7igxvafG8_IjH5Idn4g5G8N-zs4aZuAUPb-fNERcfT0JO' },
+      { email: 'grumpy.persy@gmail.com', name: 'Grumpy Persy', rank: 'RECRUIT', role: 'สมาชิกขี้บ่น เจ้าหน้าที่วิจารณ์ความเสถียรของแอร์ห้องเซิร์ฟเวอร์', avatar: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=150&auto=format&fit=crop&q=80' }
+    ];
+
+    let members = [];
+
+    const INITIAL_CHATS = [
+      { sender: 'Data Ginger', role: 'Chief Data Analyst', msg: 'สวัสดีทีมงาน วันนี้ตรวจพบปัญหากล่องข้อมูลใยแมงมุมตึงเกินไปที่เซิร์ฟเวอร์หลัก มีใครว่างไปเคลียร์ไหมเนี้ยว?', time: '10:05', avatarType: 'ginger' },
+      { sender: 'Tactical Tuxedo', role: 'Lobby Security Head', msg: 'กำลังเฝ้าระวังทางเข้าหลักอยู่ครับ มีผู้ใช้ภายนอกพยายามบุกรุกเพื่อขอปลาทูน่าเพิ่ม!', time: '10:12', avatarType: 'tuxedo' },
+      { sender: 'CEO Whiskers', role: 'Chief Executive Officer', msg: 'ทุกคนโฟกัสการเทรดสกินและการตลาดก่อนนะ วันนี้ยอดขายปลาแซลมอนต้องเพิ่มขึ้น 20%!', time: '10:15', avatarType: 'profile' },
+      { sender: 'Stealth Calico', role: 'Special Recon Agent', msg: 'เป้าหมายสกิน M9 Bayonet มีอัตรากำไรสูงถึง 16.42% แนะนำให้ทำรายการซื้อทันทีค่ะ', time: '10:20', avatarType: 'calico' },
+      { sender: 'Heavy Maine Coon', role: 'Logistics Supervisor', msg: 'กำลังตรวจสอบการจัดส่งกัญชาแมว (Catnip) ทางอากาศยาน ล็อตใหม่จะถึง HQ บ่ายสองครับ', time: '10:25', avatarType: 'default' }
+    ];
+    
+    const USD_TO_THB = 36.5;
+
+    // Profile State loaded from LocalStorage
+    let profileName = localStorage.getItem('feline_profile_name') || 'CEO Whiskers';
+    let profileImage = localStorage.getItem('feline_profile_image') || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCM8Ve5m3Ih0WqEpktNygSXsTIKBt_1tSLnsVBA6b28Utg_NP-k1kjdR_8uh5oG4FOVK0Xey1O6TMShLP0j_QfJdlNA6kn23AftUcNbHQ7FgdoHCCPFfcuW4c3KJ51Ker5YBAYcEfsj78DAAnCQgsVgZvxQTL22dZy8QjitNhPLfiC6lIKS3kErL7b3sJWxPh91ARijqTAs_OeLWzt1SKJUU0AetsqZqJwCI-G_bXUo6ENSMqRYMfi6U-N-t3e3pmSuIj4RKSykxcrq';
+    let profileRole = localStorage.getItem('feline_profile_role') || 'CHIEF EXECUTIVE OFFICER';
+    let profileLevel = localStorage.getItem('feline_profile_level') || 'LVL_99 TYCOON';
+
+    const PRESET_AVATARS = [
+      { name: 'Tuxedo Tycoon', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCM8Ve5m3Ih0WqEpktNygSXsTIKBt_1tSLnsVBA6b28Utg_NP-k1kjdR_8uh5oG4FOVK0Xey1O6TMShLP0j_QfJdlNA6kn23AftUcNbHQ7FgdoHCCPFfcuW4c3KJ51Ker5YBAYcEfsj78DAAnCQgsVgZvxQTL22dZy8QjitNhPLfiC6lIKS3kErL7b3sJWxPh91ARijqTAs_OeLWzt1SKJUU0AetsqZqJwCI-G_bXUo6ENSMqRYMfi6U-N-t3e3pmSuIj4RKSykxcrq' },
+      { name: 'Golden Agent', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCY2-l7bvJNXGutOJyFIIYffeqe2F3HkSW4ub0MdCMf3mxd70FqJr_f2orFTI6G7CK-uTI1lx2_mnsVGiYASjMvQOacLrHu6vuOg7J-SzPLotaUN--KPCCFZw8wLnSO3x8bcgiDAAw0SyMcN-Ozdi0x_1bpiVXgBQDxyvI6xtUpNI1MQ3tE0tBwNGGtFdVRkUyjai6c7_BFfgTh0fWojJSinxQobAHL_GW6U3XiWdfdpOT1cNQmWh5y2Bey65HgWrtOV7FOq9KDgSst' },
+      { name: 'Calico Commander', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDZO8rTnSxuzGK-c4bvP_bKC4uyLaBA6ZnDw_K7KUyNdXNfAise5p1glDXi9pze2KGl5733adBT7wpmZQ6ftszjFe29SaVjaCmLbJghmmR58nfcs_CVjLIcHLurWXJlFEto9VZ9OzkXlyYMH49YzkMWtPE40SKa-K8g-zVdMEm0P2_F8tA9vlY-BoGH645juP_wkjvB0ZQyrT9UQHWR60S_03qoB75EjbSI0dW62bUIIUuh38uwhusyKxBiWXPH2bVuCn8Ouxg4MmJv' },
+      { name: 'Siamese Operator', url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDTRjQu_AY4ENFxkmL00xmE5Tw5vPVE7fVavu8tsmCY3yGlwjF-2nClubDsKv9evPawooQ3d9F_odjTnfeYsKYYvh_qzNAj_rF6a_om2QRkqdNfN7PEX6ElbSAPxLMEk6DJbzhlRK_9Wm_DgbQuI_sTn5rgdZfa_SL5yNU7U-DEwrHPua86-Ts3egRj36Kb1lSY2HzHd1DKovUFqSKZK4wBvfOlWwhBV7e7igxvafG8_IjH5Idn4g5G8N-zs4aZuAUPb-fNERcfT0JO' },
+      { name: 'Cyber Shades', url: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=150&auto=format&fit=crop&q=80' },
+      { name: 'Neko Hacker', url: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=150&auto=format&fit=crop&q=80' }
+    ];
+
+    function updateProfileUI() {
+      const headerName = document.getElementById('profile-name-header');
+      const sidebarName = document.getElementById('profile-name-sidebar');
+      const headerLvl = document.getElementById('profile-level-header');
+      const sidebarRole = document.getElementById('profile-role-sidebar');
+      const imgHeader = document.getElementById('profile-img-header');
+      const imgSidebar = document.getElementById('profile-img-sidebar');
+
+      if (headerName) headerName.innerText = profileName;
+      if (sidebarName) sidebarName.innerText = profileName;
+      if (headerLvl) headerLvl.innerText = profileLevel;
+      if (sidebarRole) sidebarRole.innerText = '// ' + profileRole;
+      if (imgHeader) imgHeader.src = profileImage;
+      if (imgSidebar) imgSidebar.src = profileImage;
+    }
+
+    function openProfileModal() {
+      document.getElementById('profile-input-name').value = profileName;
+      document.getElementById('profile-input-role').value = profileRole;
+      document.getElementById('profile-input-level').value = profileLevel;
+      document.getElementById('profile-input-image').value = profileImage;
+      
+      // Render Presets
+      const grid = document.getElementById('preset-avatars-grid');
+      grid.innerHTML = PRESET_AVATARS.map((avatar, idx) => `
+        <button
+          type="button"
+          onclick="selectPresetAvatar('${avatar.url}')"
+          class="w-11 h-11 rounded-full border-2 overflow-hidden transition-all bg-black flex items-center justify-center ${profileImage === avatar.url ? 'border-[#cabeff] scale-110 shadow-md shadow-[#cabeff]/20' : 'border-[#484555] hover:border-gray-400'}"
+          id="preset-btn-${idx}"
+          title="${avatar.name}"
+        >
+          <img src="${avatar.url}" alt="${avatar.name}" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+        </button>
+      `).join('');
+
+      document.getElementById('profile-modal').classList.remove('hidden');
+    }
+
+    function selectPresetAvatar(url) {
+      document.getElementById('profile-input-image').value = url;
+      // Update highlights in grid
+      PRESET_AVATARS.forEach((avatar, idx) => {
+        const btn = document.getElementById(`preset-btn-${idx}`);
+        if (btn) {
+          if (avatar.url === url) {
+            btn.className = "w-11 h-11 rounded-full border-2 overflow-hidden transition-all bg-black flex items-center justify-center border-[#cabeff] scale-110 shadow-md shadow-[#cabeff]/20";
+          } else {
+            btn.className = "w-11 h-11 rounded-full border-2 overflow-hidden transition-all bg-black flex items-center justify-center border-[#484555] hover:border-gray-400";
+          }
+        }
+      });
+    }
+
+    function closeProfileModal() {
+      document.getElementById('profile-modal').classList.add('hidden');
+    }
+
+    function handleProfileFormSubmit(e) {
+      e.preventDefault();
+      profileName = document.getElementById('profile-input-name').value.trim() || 'CEO Whiskers';
+      profileRole = document.getElementById('profile-input-role').value.trim() || 'CHIEF EXECUTIVE OFFICER';
+      profileLevel = document.getElementById('profile-input-level').value.trim() || 'LVL_99 TYCOON';
+      profileImage = document.getElementById('profile-input-image').value.trim() || PRESET_AVATARS[0].url;
+
+      localStorage.setItem('feline_profile_name', profileName);
+      localStorage.setItem('feline_profile_role', profileRole);
+      localStorage.setItem('feline_profile_level', profileLevel);
+      localStorage.setItem('feline_profile_image', profileImage);
+
+      updateProfileUI();
+      addLog(`Profile updated successfully to "${profileName}".`, 'Command', 'success');
+      closeProfileModal();
+    }
+
+    // Demo Initial data fallback
+    const INITIAL_TRADES = [
+      { id: 't1', itemName: 'M9 Bayonet | Gamma Doppler', wear: 'Factory New (0.007)', type: 'knife', buyDate: '2026-06-24', targetSellDate: '2026-07-02', buyPrice: 1150.00, buyFeePct: 2.0, sellPrice: 1480.00, sellFeePct: 5.0, status: 'sold' },
+      { id: 't2', itemName: 'Specialist Gloves | Crimson Kimono', wear: 'Field-Tested (0.15)', type: 'gloves', buyDate: '2026-06-02', targetSellDate: '2026-07-15', buyPrice: 920.00, buyFeePct: 2.0, sellPrice: 1150.00, sellFeePct: 5.0, status: 'holding' },
+      { id: 't3', itemName: 'AK-47 | Empress', wear: 'Minimal Wear', type: 'rifle', buyDate: '2026-06-15', targetSellDate: '2026-06-24', buyPrice: 85.00, buyFeePct: 2.0, sellPrice: 92.00, sellFeePct: 5.0, status: 'overdue' },
+      { id: 't4', itemName: 'Desert Eagle | Printstream', wear: 'Field-Tested (0.20)', type: 'pistol', buyDate: '2026-06-20', targetSellDate: '2026-07-10', buyPrice: 65.00, buyFeePct: 2.0, sellPrice: null, sellFeePct: 5.0, status: 'holding' }
+    ];
+
+    const INITIAL_LOGS = [
+      { time: '14:22', department: 'Marketing', message: 'Campaign "YARN_DOMINATION" updated: +150K clicks.', level: 'success' },
+      { time: '14:18', department: 'Marketing', message: 'Sentiment analysis complete: 98% positive on Cat-stagram.', level: 'success' },
+      { time: '14:05', department: 'Risk', message: 'Warning: Catnip prices fluctuating. AD adjustment needed.', level: 'warn' },
+      { time: '13:55', department: 'Operations', message: 'AI_KITTY bot deployed to X-Feeder channels.', level: 'info' },
+      { time: '13:30', department: 'Finance', message: 'Revenue sync: Marketing spend ROI at 4.2x per paw.', level: 'info' }
+    ];
+
+    const INITIAL_AGENTS = [
+      { id: 'a1', name: 'Tactical Tuxedo', role: 'Lobby Security Head', status: 'idle', avatarType: 'tuxedo' },
+      { id: 'a2', name: 'Data Ginger', role: 'Chief Data Analyst', status: 'idle', avatarType: 'ginger' },
+      { id: 'a3', name: 'Stealth Calico', role: 'Special Recon Agent', status: 'on_mission', avatarType: 'calico' },
+      { id: 'a4', name: 'Heavy Maine Coon', role: 'Logistics Supervisor', status: 'idle', avatarType: 'coon' }
+    ];
+
+    const INITIAL_MISSIONS = [
+      { id: 'm1', title: 'Mission: Nap Optimization', objective: 'Maximize daily feline sleeping efficiency in Central Lobby.', agent: 'Tactical Tuxedo', priority: 'CRITICAL', payout: 1500, deadline: '02h 45m', progress: 75 },
+      { id: 'm2', title: 'Mission: Yarn Tangle Resolution', objective: 'Safely de-tangle data cables and fiber ropes in Data Core.', agent: 'Data Ginger', priority: 'HIGH', payout: 2200, deadline: '05h 12m', progress: 40 },
+      { id: 'm3', title: 'Mission: Stealth Stretch', objective: 'Instruct yoga routines and quiet flexibility poses in Zen Dojo.', agent: 'Stealth Calico', priority: 'MEDIUM', payout: 800, deadline: '14h 22m', progress: 90 }
+    ];
+
+    // Initialize application
+    window.onload = function() {
+      // Initialize state from LocalStorage or Fallbacks
+      trades = JSON.parse(localStorage.getItem('feline_trades')) || INITIAL_TRADES;
+      logs = JSON.parse(localStorage.getItem('feline_logs')) || INITIAL_LOGS;
+      agents = JSON.parse(localStorage.getItem('feline_agents')) || INITIAL_AGENTS;
+      missions = JSON.parse(localStorage.getItem('feline_missions')) || INITIAL_MISSIONS;
+      chats = JSON.parse(localStorage.getItem('feline_chats')) || INITIAL_CHATS;
+      members = JSON.parse(localStorage.getItem('feline_org_members')) || INITIAL_MEMBERS;
+      document.getElementById('sheets-api-url').value = localStorage.getItem('feline_sheet_url') || '';
+
+      // Set admin toggle switch visual state
+      const adminToggle = document.getElementById('admin-mode-toggle');
+      if (adminToggle) adminToggle.checked = isAdminMode;
+
+      // Initialize profile custom settings
+      updateProfileUI();
+
+      selectedAgent = agents[0];
+      selectedMission = missions[0];
+
+      // Detect if running inside Google Apps Script iframe
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        document.getElementById('gas-indicator').className = 'w-1.5 h-1.5 bg-[#22C55E] rounded-full';
+        document.getElementById('gas-text').innerText = 'SHEET CONNECTION: GOOGLE APPS SCRIPT ONLINE';
+        // Try to pre-load actual database from active spreadsheet
+        google.script.run.withSuccessHandler(function(gasRows) {
+          if (gasRows && gasRows.length > 1) {
+            parseAndImportGasRows(gasRows);
+            addLog('ดึงข้อมูลสกินจาก Google Sheets ผ่าน API ได้สำเร็จ', 'System', 'success');
+          }
+        }).getTradesData();
+      }
+
+      // Start tick clock
+      setInterval(tickClock, 1000);
+      tickClock();
+
+      // Render interfaces
+      renderAll();
+      lucide.createIcons();
+      startPeriodicChatSimulation();
+    };
+
+    function tickClock() {
+      const now = new Date();
+      document.getElementById('clock-display').innerText = now.toUTCString().split(' ')[4];
+    }
+
+    // Tab switcher
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
+
+      // highlight nav btn
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.className = "nav-btn w-full text-left px-3 py-2.5 font-mono text-xs font-bold rounded flex items-center gap-3 transition-all cursor-pointer text-gray-400 hover:text-white hover:bg-white/5";
+      });
+      const activeBtn = document.querySelector(`[data-tab="${tabId}"]`);
+      if (activeBtn) {
+        activeBtn.className = "nav-btn w-full text-left px-3 py-2.5 font-mono text-xs font-bold rounded flex items-center gap-3 transition-all cursor-pointer bg-[#201e28] text-white border-l-4 border-l-[#cabeff]";
+      }
+
+      // If switching to command center, re-render dashboard and chats
+      if (tabId === 'command') {
+        renderAgentDashboard();
+        renderChats();
+      }
+    }
+
+    // Helper formatting
+    function formatCurrency(val) {
+      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+    }
+
+    function formatBaht(val) {
+      return '฿' + new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 }).format(val);
+    }
+
+    // Render operations
+    function renderAll() {
+      renderLogs();
+      renderStats();
+      renderTradesTable();
+      renderAgentsAndMissions();
+      renderAgentDashboard();
+      renderChats();
+      renderAuthUI();
+      renderMembersList();
+      renderMissionStatusBoard();
+    }
+
+    // Render Stats
+    function renderStats() {
+      // Calculate dashboard stats
+      const totalPortfolioCostUsd = trades.reduce((sum, t) => sum + (t.status !== 'sold' ? t.buyPrice : 0), 0);
+      const portValEl = document.getElementById('metric-portfolio-value');
+      if (portValEl) portValEl.innerText = formatBaht(totalPortfolioCostUsd * USD_TO_THB);
+
+      const activeCountEl = document.getElementById('metric-active-count');
+      if (activeCountEl) activeCountEl.innerText = trades.filter(t => t.status !== 'sold').length + ' ชิ้น';
+
+      const statCountEl = document.getElementById('stat-count');
+      if (statCountEl) statCountEl.innerText = trades.length + ' ชิ้น';
+
+      // Net profit sold skins
+      const soldSkins = trades.filter(t => t.status === 'sold');
+      const netProfitUsd = soldSkins.reduce((sum, t) => {
+        const trueCost = t.buyPrice * (1 + (t.buyFeePct || 2.0) / 100);
+        const netReceive = (t.sellPrice || 0) * (1 - (t.sellFeePct || 5.0) / 100);
+        return sum + (netReceive - trueCost);
+      }, 0);
+
+      const netProfitThbLabel = document.getElementById('metric-net-profit');
+      if (netProfitThbLabel) {
+        netProfitThbLabel.innerText = formatBaht(netProfitUsd * USD_TO_THB);
+        if (netProfitUsd >= 0) {
+          netProfitThbLabel.className = "text-xl font-bold font-mono text-[#22C55E] mt-1";
+        } else {
+          netProfitThbLabel.className = "text-xl font-bold font-mono text-[#EF4444] mt-1";
+        }
+      }
+
+      const statRevEl = document.getElementById('stat-revenue');
+      if (statRevEl) {
+        statRevEl.innerText = formatBaht(netProfitUsd * USD_TO_THB);
+        if (netProfitUsd >= 0) {
+          statRevEl.className = "text-base font-bold text-[#22C55E] font-mono";
+        } else {
+          statRevEl.className = "text-base font-bold text-[#EF4444] font-mono";
+        }
+      }
+    }
+
+    // Gmail Authentication UI Drawing
+    function renderAuthUI() {
+      const authContainer = document.getElementById('header-auth-actions');
+      if (!authContainer) return;
+
+      if (!isGoogleLoggedIn) {
+        authContainer.innerHTML = `
+          <button onclick="openGmailLoginModal()" class="px-3 py-1.5 bg-[#4285F4] hover:bg-[#357ae8] text-white font-sans font-bold text-[10px] uppercase rounded-full flex items-center gap-1.5 shadow-[0_2px_0_0_#1a56b8] active:translate-y-px active:shadow-none transition-all cursor-pointer">
+            <i data-lucide="key" class="w-3.5 h-3.5 text-white"></i> ล็อกอิน Gmail เพื่อเข้าร่วมองค์กร
+          </button>
+        `;
+      } else {
+        authContainer.innerHTML = `
+          <div class="bg-[#1D212F] border border-[#4285F4]/40 px-3 py-1 rounded-full text-[9px] font-mono text-[#a3b8cc] flex items-center gap-2">
+            <span class="w-1.5 h-1.5 bg-[#22C55E] rounded-full"></span>
+            <span>GMAIL: <strong class="text-white">${googleEmail}</strong> <span class="px-1.5 py-0.5 rounded bg-black/40 text-[#4285F4] font-black">${memberRank}</span></span>
+            <button onclick="handleGmailLogout()" class="text-[#EF4444] hover:text-white ml-2 cursor-pointer font-sans font-bold">LOGOUT</button>
+          </div>
+        `;
+      }
+      lucide.createIcons();
+    }
+
+    function openGmailLoginModal() {
+      const modal = document.getElementById('gmail-login-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        // Load presets
+        const grid = document.getElementById('preset-login-avatars');
+        if (grid) {
+          grid.innerHTML = PRESET_AVATARS.map((avatar, idx) => `
+            <button
+              type="button"
+              onclick="selectLoginPresetAvatar('${avatar.url}')"
+              class="w-8 h-8 rounded-full border border-[#484555] overflow-hidden focus:border-[#4285F4] cursor-pointer hover:scale-105 transition-transform"
+              title="${avatar.name}"
+            >
+              <img class="w-full h-full object-cover" src="${avatar.url}" alt="${avatar.name}">
+            </button>
+          `).join('');
+        }
+      }
+    }
+
+    function closeGmailLoginModal() {
+      const modal = document.getElementById('gmail-login-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    let selectedLoginAvatarUrl = '';
+    function selectLoginPresetAvatar(url) {
+      selectedLoginAvatarUrl = url;
+      addLog('เลือกแมวตัวแทนสายลับสำเร็จ', 'Security', 'info');
+    }
+
+    function handleGmailLogin(e) {
+      if (e) e.preventDefault();
+      const emailVal = document.getElementById('login-email-input').value.trim();
+      const nameVal = document.getElementById('login-name-input').value.trim();
+      const chosenAvatar = selectedLoginAvatarUrl || PRESET_AVATARS[Math.floor(Math.random() * PRESET_AVATARS.length)].url;
+
+      isGoogleLoggedIn = true;
+      googleEmail = emailVal;
+      googleName = nameVal;
+      memberRank = 'RECRUIT'; // New users are always recruits until admin appoints them.
+
+      localStorage.setItem('gmail_is_logged_in', 'true');
+      localStorage.setItem('gmail_email', emailVal);
+      localStorage.setItem('gmail_name', nameVal);
+      localStorage.setItem('gmail_member_rank', memberRank);
+
+      // Link profile as well
+      profileName = nameVal;
+      profileRole = 'RECRUIT';
+      profileImage = chosenAvatar;
+      profileLevel = 'LVL_1 CADET';
+
+      localStorage.setItem('feline_profile_name', profileName);
+      localStorage.setItem('feline_profile_role', profileRole);
+      localStorage.setItem('feline_profile_image', profileImage);
+      localStorage.setItem('feline_profile_level', profileLevel);
+
+      // Upsert into organization members array
+      const existingIdx = members.findIndex(m => m.email.toLowerCase() === emailVal.toLowerCase());
+      if (existingIdx >= 0) {
+        members[existingIdx].name = nameVal;
+        members[existingIdx].avatar = chosenAvatar;
+      } else {
+        members.push({
+          email: emailVal,
+          name: nameVal,
+          rank: 'RECRUIT',
+          role: 'ผู้สมัครเข้าสู่ระบบใหม่ ผ่านการเชื่อมต่อ Gmail อย่างปลอดภัย',
+          avatar: chosenAvatar
+        });
+      }
+      localStorage.setItem('feline_org_members', JSON.stringify(members));
+
+      addLog(`MEMBER_CONNECTED: สมาชิกใหม่ "${nameVal}" (${emailVal}) เชื่อมต่อผ่านระบบ Gmail Secure`, 'Security', 'success');
+
+      closeGmailLoginModal();
+      updateProfileUI();
+      renderAll();
+
+      alert(`ยินดีต้อนรับเข้าสู่องค์กรสายลับเหมียวเนี้ยว! ล็อกอินสำเร็จด้วยอีเมล ${emailVal}`);
+    }
+
+    function handleGmailLogout() {
+      if (!confirm('ยืนยันออกจากระบบบอร์ดความปลอดภัยเนี้ยว?')) return;
+
+      isGoogleLoggedIn = false;
+      googleEmail = '';
+      googleName = '';
+      memberRank = 'RECRUIT';
+
+      localStorage.removeItem('gmail_is_logged_in');
+      localStorage.removeItem('gmail_email');
+      localStorage.removeItem('gmail_name');
+      localStorage.removeItem('gmail_member_rank');
+
+      // Clear profile back to default
+      profileName = 'CEO Whiskers';
+      profileRole = 'CHIEF EXECUTIVE OFFICER';
+      profileImage = PRESET_AVATARS[0].url;
+      profileLevel = 'LVL_99 TYCOON';
+
+      localStorage.setItem('feline_profile_name', profileName);
+      localStorage.setItem('feline_profile_role', profileRole);
+      localStorage.setItem('feline_profile_image', profileImage);
+      localStorage.setItem('feline_profile_level', profileLevel);
+
+      addLog('LOGOUT_SECURE: สมาชิกปลดการเชื่อมต่อระบบ Gmail เรียบร้อย', 'Security', 'info');
+
+      updateProfileUI();
+      renderAll();
+    }
+
+    function toggleAdminMode() {
+      const toggle = document.getElementById('admin-mode-toggle');
+      isAdminMode = toggle.checked;
+      localStorage.setItem('feline_is_admin_mode', isAdminMode ? 'true' : 'false');
+      
+      addLog(`ADMIN_MODE_SET: โหมดแอดมินถูกเปลี่ยนสถานะเป็น ${isAdminMode ? 'เปิดใช้งาน' : 'ปิดการใช้งาน'}`, 'Security', 'info');
+      renderMembersList();
+    }
+
+    // Render Organization and ranks directory
+    function renderMembersList() {
+      const container = document.getElementById('members-list-container');
+      if (!container) return;
+
+      container.innerHTML = '';
+      members.forEach(m => {
+        const isSelf = isGoogleLoggedIn && googleEmail.toLowerCase() === m.email.toLowerCase();
+        const card = document.createElement('div');
+        card.className = `p-4 border bg-[#14121b] border-[#484555]/80 rounded-lg flex items-start gap-4 hover:border-[#22C55E]/50 transition-all ${
+          isSelf ? 'ring-2 ring-[#4285F4]/40 bg-[#1D212F]/40' : ''
+        }`;
+
+        // Get rank badge color
+        let rankColor = 'text-gray-400';
+        let rankLabel = m.rank || 'RECRUIT';
+        if (rankLabel === 'CEO') rankColor = 'text-[#EF4444] font-black';
+        else if (rankLabel === 'COMMANDER') rankColor = 'text-[#F59E0B] font-bold';
+        else if (rankLabel === 'ELITE') rankColor = 'text-[#cabeff] font-bold';
+        else if (rankLabel === 'AGENT') rankColor = 'text-[#3b82f6]';
+
+        // Dropdown HTML if admin mode is toggled on
+        let adminDropdownHtml = '';
+        if (isAdminMode) {
+          adminDropdownHtml = `
+            <div class="mt-3 pt-2.5 border-t border-[#484555]/60 flex items-center gap-2">
+              <span class="text-[9px] text-gray-500 uppercase font-mono">แต่งตั้งยศ:</span>
+              <select 
+                onchange="appointRank('${m.email}', this.value)"
+                class="bg-black/60 border border-[#22C55E]/60 text-[#22C55E] text-[10px] px-1.5 py-0.5 rounded focus:outline-none"
+              >
+                <option value="CEO" ${m.rank === 'CEO' ? 'selected' : ''}>CEO (ประธาน)</option>
+                <option value="COMMANDER" ${m.rank === 'COMMANDER' ? 'selected' : ''}>COMMANDER</option>
+                <option value="ELITE" ${m.rank === 'ELITE' ? 'selected' : ''}>ELITE</option>
+                <option value="AGENT" ${m.rank === 'AGENT' ? 'selected' : ''}>AGENT</option>
+                <option value="RECRUIT" ${m.rank === 'RECRUIT' ? 'selected' : ''}>RECRUIT</option>
+              </select>
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="w-11 h-11 border border-white/15 rounded-full overflow-hidden shrink-0 bg-black/40">
+            <img class="w-full h-full object-cover" src="${m.avatar}" alt="${m.name}">
+          </div>
+          <div class="flex-1 min-w-0 font-mono text-[11px]">
+            <div class="flex justify-between items-start gap-1">
+              <span class="text-white font-bold font-sans text-xs flex items-center gap-1.5 truncate">
+                ${m.name} ${isSelf ? '<span class="text-[9px] bg-[#4285F4] text-white px-1 py-0.2 rounded font-mono">YOU</span>' : ''}
+              </span>
+              <span class="text-[9px] text-gray-500 font-mono">${m.email}</span>
+            </div>
+            
+            <div class="mt-1 flex items-center gap-1">
+              <span class="text-[9px] text-gray-400">CLASS:</span>
+              <span class="${rankColor} text-[10px] uppercase">${rankLabel}</span>
+            </div>
+
+            <p class="text-gray-400 text-[10px] mt-1.5 font-sans">${m.role}</p>
+
+            ${adminDropdownHtml}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function appointRank(email, newRank) {
+      const idx = members.findIndex(m => m.email.toLowerCase() === email.toLowerCase());
+      if (idx === -1) return;
+
+      const oldRank = members[idx].rank;
+      members[idx].rank = newRank;
+
+      // Adjust role descriptions based on appointed rank
+      let roleDesc = 'สมาชิกทดลองงานระบบสายลับแมว';
+      if (newRank === 'CEO') roleDesc = 'ประธานอาวุโสสูงสุดคุมคลังปลาทูน่าและสัญญากับสหายลับ';
+      else if (newRank === 'COMMANDER') roleDesc = 'ผู้นำฝ่ายเทคนิค แผนกซอฟต์แวร์ แฮกเกอร์คีย์บอร์ด และขุมพิกัดสกินปืน';
+      else if (newRank === 'ELITE') roleDesc = 'สายลับผู้ชำนาญการวิเคราะห์แอมปลิจูดกราฟความเสี่ยงสูงสุด';
+      else if (newRank === 'AGENT') roleDesc = 'สายลับปฏิบัติการหลักพร้อมทำภารกิจยุทธวิธีทุกมิติ';
+      members[idx].role = roleDesc;
+
+      // If the current user is appointed
+      if (isGoogleLoggedIn && googleEmail.toLowerCase() === email.toLowerCase()) {
+        memberRank = newRank;
+        localStorage.setItem('gmail_member_rank', newRank);
+        
+        profileRole = newRank;
+        localStorage.setItem('feline_profile_role', newRank);
+      }
+
+      localStorage.setItem('feline_org_members', JSON.stringify(members));
+      addLog(`RANK_APPOINTED: แอดมินแต่งตั้งยศให้ "${members[idx].name}" จาก ${oldRank} เป็น ${newRank}`, 'Security', 'success');
+
+      updateProfileUI();
+      renderAll();
+    }
+
+    // Dynamic Mission Status Board and Auto-Tracker render (replaces Global logistics map)
+    function renderMissionStatusBoard() {
+      const container = document.getElementById('mission-status-board-container');
+      if (!container) return;
+
+      if (missions.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-12 p-10 text-center font-mono text-xs text-gray-500">
+            ไม่มีภารกิจทำงานอยู่ในขณะนี้เนี้ยว...
+          </div>
+        `;
+        return;
+      }
+
+      // We show active agents count and idle agents count based on real data
+      const totalDutyAgents = agents.filter(a => a.status === 'on_mission').length;
+      const waitingAgents = agents.filter(a => a.status === 'idle').length;
+
+      let tilesHtml = missions.map(m => {
+        let badgeColor = 'bg-[#F59E0B]/15 text-[#F59E0B]';
+        if (m.priority === 'CRITICAL') badgeColor = 'bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/40 animate-pulse';
+        else if (m.priority === 'LOW') badgeColor = 'bg-gray-500/15 text-gray-400';
+
+        return `
+          <div class="p-3.5 bg-black/45 border border-[#484555]/80 hover:border-cyan-500/50 transition-all rounded font-mono text-xs text-gray-300 relative group">
+            <div class="absolute top-2.5 right-2.5">
+              <span class="px-2 py-0.5 rounded-[2px] text-[8px] font-bold ${badgeColor}">
+                ${m.priority}
+              </span>
+            </div>
+
+            <div class="font-sans text-xs font-bold text-white mb-1.5 truncate pr-14 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 bg-[#cabeff] rounded-full"></span>
+              ${m.title}
+            </div>
+
+            <p class="text-[10px] text-gray-400 line-clamp-2 min-h-[30px] leading-relaxed mb-3">${m.objective}</p>
+
+            <div class="space-y-2.5 pt-2 border-t border-[#484555]/50">
+              <div class="flex justify-between items-center text-[9px]">
+                <span class="text-gray-500 uppercase">เจ้าหน้าที่วิเคราะห์:</span>
+                <span class="text-white font-bold">${m.agent || 'ยังไม่ได้ระบุ'}</span>
+              </div>
+
+              <div class="flex justify-between items-center text-[9px]">
+                <span class="text-gray-500 uppercase">ค่าจ้างกองกลาง:</span>
+                <span class="text-[#22C55E] font-bold">฿${m.payout.toLocaleString()}</span>
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex justify-between text-[8px] text-gray-500">
+                  <span>ความสำเร็จ:</span>
+                  <span class="text-cyan-400 font-bold">${m.progress}%</span>
+                </div>
+                <div class="h-1.5 bg-black/50 rounded-full overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full" style="width: ${m.progress}%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Inject Global Performance metrics as well
+      const headerStatsSummary = `
+        <div class="col-span-12 grid grid-cols-2 md:grid-cols-4 gap-3 bg-[#1D212F]/40 border border-[#4285F4]/30 p-3 rounded mb-2">
+          <div class="text-center md:border-r border-[#484555]/60">
+            <span class="text-[9px] text-gray-400 uppercase font-mono">AGENT ปฏิบัติภารกิจ</span>
+            <span class="block text-lg font-bold font-mono text-[#EF4444] mt-0.5" id="stats-duty-agents">${totalDutyAgents} ท่าน</span>
+          </div>
+          <div class="text-center md:border-r border-[#484555]/60">
+            <span class="text-[9px] text-gray-400 uppercase font-mono">AGENT กำลังรอรับมอบหมาย</span>
+            <span class="block text-lg font-bold font-mono text-[#22C55E] mt-0.5" id="stats-idle-agents">${waitingAgents} ท่าน</span>
+          </div>
+          <div class="text-center md:border-r border-[#484555]/60">
+            <span class="text-[9px] text-gray-400 uppercase font-mono">ภารกิจในระบบทั้งสิ้น</span>
+            <span class="block text-lg font-bold font-mono text-white mt-0.5">${missions.length} งาน</span>
+          </div>
+          <div class="text-center">
+            <span class="text-[9px] text-gray-400 uppercase font-mono">เฉลี่ยเปอร์เซ็นต์งานเสร็จ</span>
+            <span class="block text-lg font-bold font-mono text-cyan-400 mt-0.5">
+              ${(missions.reduce((sum, m) => sum + m.progress, 0) / (missions.length || 1)).toFixed(0)}%
+            </span>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = headerStatsSummary + `<div class="grid grid-cols-1 md:grid-cols-3 gap-3 w-full">${tilesHtml}</div>`;
+    }
+
+    // Custom mission form toggling
+    function toggleNewMissionForm() {
+      const container = document.getElementById('custom-mission-form-container');
+      if (!container) return;
+
+      const isHidden = container.classList.contains('hidden');
+      if (isHidden) {
+        container.classList.remove('hidden');
+        // Populate agent selector
+        const select = document.getElementById('new-mission-agent');
+        if (select) {
+          select.innerHTML = agents.map(a => `
+            <option value="${a.name}">${a.name} (${a.role})</option>
+          `).join('');
+        }
+      } else {
+        container.classList.add('hidden');
+      }
+    }
+
+    // Creating dynamic custom mission
+    function handleCreateMission(e) {
+      if (e) e.preventDefault();
+
+      const titleVal = document.getElementById('new-mission-title').value.trim();
+      const objectiveVal = document.getElementById('new-mission-objective').value.trim();
+      const agentVal = document.getElementById('new-mission-agent').value;
+      const priorityVal = document.getElementById('new-mission-priority').value;
+      const payoutVal = parseFloat(document.getElementById('new-mission-payout').value) || 1200;
+      const deadlineVal = document.getElementById('new-mission-deadline').value.trim() || '04h 30m';
+      const targetEmail = document.getElementById('new-mission-email').value.trim();
+
+      const newMission = {
+        id: 'm_' + Date.now(),
+        title: 'Mission: ' + titleVal,
+        objective: objectiveVal,
+        agent: agentVal,
+        priority: priorityVal,
+        payout: payoutVal,
+        deadline: deadlineVal,
+        progress: 0
+      };
+
+      missions.push(newMission);
+      localStorage.setItem('feline_missions', JSON.stringify(missions));
+
+      // Trigger email alert simulation
+      if (targetEmail) {
+        addLog(`EMAIL_NOTIFICATION_DISPATCH: ส่งจดหมายแจ้งเตือนภารกิจ "${titleVal}" ไปยัง ${targetEmail}`, 'Operations', 'info');
+        
+        // POST API request proxy to simulated email route
+        fetch('/api/notify-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: targetEmail,
+            subject: `Feline Command: มอบหมายภารกิจใหม่ [${titleVal}] เนี้ยว!`,
+            message: `เรียนสายลับปฏิบัติการ,\n\nภารกิจด่วนที่สุดถูกจัดส่งให้คุณเป็นเจ้าหน้าที่หลัก:\nภารกิจ: ${titleVal}\nขอบเขตขอบข่ายเป้าหมาย: ${objectiveVal}\n\nกรุณาเร่งความเร็วในการทำงานเนี้ยว!`
+          })
+        })
+        .then(res => res.json())
+        .then(result => {
+          console.log('Simulated email API dispatched successfully:', result);
+          addLog(`EMAIL_DISPATCHED_OK: ระบบตอบรับการส่งจดหมายตอบกลับไปยังปลายทางเรียบร้อย!`, 'System', 'success');
+        })
+        .catch(err => {
+          console.warn('API Endpoint not running or offline, fallback simulation:', err);
+        });
+      }
+
+      addLog(`MISSION_CREATED: เพิ่มภารกิจใหม่ "${titleVal}" และมอบหมายให้ ${agentVal}`, 'Operations', 'success');
+      
+      toggleNewMissionForm();
+      renderAll();
+
+      alert(`มอบหมายภารกิจให้ ${agentVal} สำเร็จ! ${targetEmail ? 'และได้สั่งการส่งเมล์ระบบแล้วเนี้ยว' : ''}`);
+    }
+
+    // Interactive slider progress modifier inside Operations
+    function updateMissionProgressInList(missionId, newProgressValue) {
+      missions = missions.map(m => m.id === missionId ? { ...m, progress: parseInt(newProgressValue) || 0 } : m);
+      localStorage.setItem('feline_missions', JSON.stringify(missions));
+      
+      // Update selected mission if it matches
+      if (selectedMission && selectedMission.id === missionId) {
+        selectedMission.progress = parseInt(newProgressValue) || 0;
+      }
+      
+      renderMissionStatusBoard();
+      // Keep label value updated
+      const lbl = document.getElementById(`progress-lbl-${missionId}`);
+      if (lbl) lbl.innerText = newProgressValue + '%';
+    }
+
+    // Dropdown agent reassignment
+    function reassignMissionAgent(missionId, newAgentName) {
+      missions = missions.map(m => m.id === missionId ? { ...m, agent: newAgentName } : m);
+      localStorage.setItem('feline_missions', JSON.stringify(missions));
+
+      if (selectedMission && selectedMission.id === missionId) {
+        selectedMission.agent = newAgentName;
+      }
+
+      addLog(`AGENT_REASSIGNED: เปลี่ยนผู้มอบหมายภารกิจเป็น ${newAgentName}`, 'Operations', 'info');
+      renderAll();
+    }
+
+    // Render Logs
+    function renderLogs() {
+      const logsContainer = document.getElementById('logs-list');
+      if (!logsContainer) return;
+      logsContainer.innerHTML = '';
+      logs.forEach(log => {
+        let levelColor = 'text-[#60A5FA]';
+        if (log.level === 'error') levelColor = 'text-[#EF4444] font-bold';
+        if (log.level === 'warn') levelColor = 'text-[#F59E0B] font-bold';
+        if (log.level === 'success') levelColor = 'text-[#22C55E] font-bold';
+
+        const row = document.createElement('div');
+        row.className = "flex gap-2.5 border-b border-white/5 pb-2 last:border-0";
+        row.innerHTML = `
+          <span class="${levelColor}">[${log.time}]</span>
+          <span class="text-[#c9c4d8] text-[11px] leading-relaxed">
+            <span class="text-[#7c5cfc] font-semibold">${log.department}:</span> ${log.message}
+          </span>
+        `;
+        logsContainer.appendChild(row);
+      });
+    }
+
+    function addLog(message, department, level) {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      logs.unshift({ time: timeStr, department, message, level });
+      if (logs.length > 25) logs.pop();
+      localStorage.setItem('feline_logs', JSON.stringify(logs));
+      renderLogs();
+    }
+
+    // Agent Operations Radar & Status list
+    function renderAgentDashboard() {
+      const totalEl = document.getElementById('dash-agent-total');
+      const activeEl = document.getElementById('dash-agent-active');
+      const idleEl = document.getElementById('dash-agent-idle');
+
+      if (!totalEl || !activeEl || !idleEl) return;
+
+      const totalCount = agents.length;
+      const activeCount = agents.filter(a => a.status === 'on_mission').length;
+      const idleCount = agents.filter(a => a.status === 'idle').length;
+
+      totalEl.innerText = totalCount;
+      activeEl.innerText = activeCount;
+      idleEl.innerText = idleCount;
+
+      // Render Left Column (Roster List)
+      const rosterContainer = document.getElementById('dash-roster-list');
+      if (rosterContainer) {
+        rosterContainer.innerHTML = agents.map(a => {
+          const badgeBg = a.status === 'on_mission' ? 'bg-[#EF4444]/15 text-[#EF4444]' : 'bg-[#22C55E]/15 text-[#22C55E]';
+          const dotBg = a.status === 'on_mission' ? 'bg-[#EF4444] animate-pulse' : 'bg-[#22C55E]';
+          return `
+            <div onclick="selectDashAgent('${a.id}')" class="p-2 border border-[#484555]/40 bg-[#0F1117]/80 hover:bg-[#1C1A24]/90 rounded flex items-center justify-between cursor-pointer transition-all gap-2" id="dash-agent-item-${a.id}">
+              <div class="flex items-center gap-2 min-w-0">
+                <img src="${getAgentAvatar(a.avatarType)}" class="w-6 h-6 rounded-full border border-white/15 object-cover shrink-0" referrerpolicy="no-referrer">
+                <div class="min-w-0">
+                  <div class="text-white text-[11px] font-bold truncate flex items-center gap-1">
+                    <span>${a.name}</span>
+                  </div>
+                  <div class="text-gray-500 text-[9px] font-mono truncate">${a.role}</div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded-[2px] font-mono text-[8px] font-bold flex items-center gap-1 ${badgeBg}">
+                <span class="w-1.5 h-1.5 rounded-full ${dotBg}"></span>
+                ${a.status === 'on_mission' ? 'ON DUTY' : 'IDLE'}
+              </span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Dropdown Agent options (Only Ready agents can be assigned new tasks!)
+      const agentSelect = document.getElementById('dash-assign-agent-select');
+      if (agentSelect) {
+        const readyAgents = agents.filter(a => a.status === 'idle');
+        if (readyAgents.length === 0) {
+          agentSelect.innerHTML = `<option value="">[สายลับทุกคนไม่ว่างปฏิบัติงาน]</option>`;
+        } else {
+          agentSelect.innerHTML = readyAgents.map(a => `
+            <option value="${a.id}">${a.name} (ว่าง)</option>
+          `).join('');
+        }
+      }
+
+      // Render Dropdown Mission options
+      const missionSelect = document.getElementById('dash-assign-mission-select');
+      if (missionSelect) {
+        let optionsHtml = missions.map(m => `
+          <option value="${m.id}">${m.title}</option>
+        `).join('');
+        optionsHtml += `<option value="custom">✍️ กำหนดภารกิจใหม่เอง (Custom)...</option>`;
+        missionSelect.innerHTML = optionsHtml;
+      }
+      toggleCustomMissionInput();
+    }
+
+    // Toggle custom task field
+    function toggleCustomMissionInput() {
+      const select = document.getElementById('dash-assign-mission-select');
+      const wrapper = document.getElementById('custom-mission-input-wrapper');
+      if (select && wrapper) {
+        if (select.value === 'custom') {
+          wrapper.classList.remove('hidden');
+        } else {
+          wrapper.classList.add('hidden');
+        }
+      }
+    }
+
+    // Selection helper when clicking roster list row
+    function selectDashAgent(agentId) {
+      const select = document.getElementById('dash-assign-agent-select');
+      if (!select) return;
+      
+      const targetAgent = agents.find(a => a.id === agentId);
+      if (!targetAgent) return;
+
+      if (targetAgent.status === 'on_mission') {
+        const feedback = document.getElementById('dash-assignment-feedback');
+        if (feedback) {
+          feedback.innerText = `${targetAgent.name} กำลังไม่ว่างปฏิบัติงานในขณะนี้! ⚠️`;
+          setTimeout(() => { feedback.innerText = ''; }, 3000);
+        }
+        return;
+      }
+
+      select.value = agentId;
+      
+      // Highlight selected item and de-highlight others
+      agents.forEach(a => {
+        const item = document.getElementById(`dash-agent-item-${a.id}`);
+        if (item) {
+          if (a.id === agentId) {
+            item.className = "p-2 border border-[#cabeff] bg-[#1C1A24]/90 scale-[1.02] shadow-md shadow-[#cabeff]/10 rounded flex items-center justify-between cursor-pointer transition-all gap-2";
+          } else {
+            item.className = "p-2 border border-[#484555]/40 bg-[#0F1117]/80 hover:bg-[#1C1A24]/90 rounded flex items-center justify-between cursor-pointer transition-all gap-2";
+          }
+        }
+      });
+    }
+
+    // Assigning task logic
+    function handleDashAssign(e) {
+      if (e) e.preventDefault();
+      const agentId = document.getElementById('dash-assign-agent-select').value;
+      const missionId = document.getElementById('dash-assign-mission-select').value;
+
+      if (!agentId) {
+        alert("กรุณาเลือกสายลับองค์กรที่ว่างงาน!");
+        return;
+      }
+
+      const targetAgent = agents.find(a => a.id === agentId);
+      if (!targetAgent) return;
+      if (targetAgent.status === 'on_mission') {
+        alert("สายลับท่านนี้ไม่ว่างปฏิบัติงาน!");
+        return;
+      }
+
+      let missionTitle = '';
+      let missionObjective = '';
+      let targetMission = null;
+
+      if (missionId === 'custom') {
+        const customTitleInput = document.getElementById('dash-assign-custom-title');
+        let customVal = customTitleInput.value.trim();
+        if (!customVal) {
+          alert("กรุณากรอกหัวข้อภารกิจแบบกำหนดเอง!");
+          return;
+        }
+        missionTitle = "Mission: " + customVal;
+        missionObjective = "ภารกิจด่วนสั่งการโดย " + profileName;
+
+        // Add a new mission record
+        const newMId = 'm_' + Date.now();
+        targetMission = {
+          id: newMId,
+          title: missionTitle,
+          objective: missionObjective,
+          agent: targetAgent.name,
+          priority: 'HIGH',
+          payout: 2000,
+          deadline: '08h 00m',
+          progress: 10
+        };
+        missions.push(targetMission);
+        customTitleInput.value = '';
+      } else {
+        targetMission = missions.find(m => m.id === missionId);
+        if (!targetMission) return;
+        missionTitle = targetMission.title;
+        missionObjective = targetMission.objective;
+      }
+
+      // Update statuses in core structures
+      agents = agents.map(a => a.id === targetAgent.id ? { ...a, status: 'on_mission' } : a);
+      missions = missions.map(m => m.id === targetMission.id ? { ...m, agent: targetAgent.name, progress: Math.min(m.progress + 20, 100) } : m);
+
+      // Save arrays to local storage
+      localStorage.setItem('feline_agents', JSON.stringify(agents));
+      localStorage.setItem('feline_missions', JSON.stringify(missions));
+
+      // Append general system log
+      addLog(`DEPLOYED: ส่งตัว ${targetAgent.name} ไปปฏิบัติภารกิจ "${missionTitle}"`, 'Operations', 'success');
+
+      // Create Chat messages
+      const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      
+      // 1. Automated System Announcement
+      chats.push({
+        sender: 'HQ DEPLOYER',
+        role: 'AUTOMATED DISPATCH',
+        msg: `📢 มอบหมายงาน: [${profileName}] ส่งตัว [${targetAgent.name}] สู่พิกัดภารกิจ "${missionTitle}" เรียบร้อยแล้ว!`,
+        time: timeStr,
+        avatarType: 'default'
+      });
+
+      // 2. Automated Agent Reply
+      const ackReplies = {
+        tuxedo: 'รับทราบภารกิจความมั่นคงครับท่านประธาน! จะดูแลพื้นที่อย่างใกล้ชิดที่สุดเนี้ยว!',
+        ginger: 'สายข้อมูลรับทราบภารกิจ! เริ่มตรวจสอบสัญญาณเน็ตเวิร์กทันที!',
+        calico: 'ข้อมูลงามวิจัยและสอดแนมพร้อมลุยค่ะ ดำเนินการเคลื่อนย้ายข้อมูลทันที',
+        default: 'รับภารกิจเรียบร้อยแล้วครับ! พร้อมสละชีพเพื่อกัญชาแมวพรีเมียม!'
+      };
+      const ackMsg = ackReplies[targetAgent.avatarType] || ackReplies['default'];
+
+      setTimeout(() => {
+        const ackTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        chats.push({
+          sender: targetAgent.name,
+          role: targetAgent.role,
+          msg: ackMsg,
+          time: ackTime,
+          avatarType: targetAgent.avatarType
+        });
+        localStorage.setItem('feline_chats', JSON.stringify(chats));
+        renderChats();
+      }, 1000);
+
+      localStorage.setItem('feline_chats', JSON.stringify(chats));
+
+      // Re-draw both dashboard and operational lists
+      renderAll();
+
+      const feedback = document.getElementById('dash-assignment-feedback');
+      if (feedback) {
+        feedback.innerText = `DEPLOYED ${targetAgent.name} สำเร็จ! ✨`;
+        setTimeout(() => { feedback.innerText = ''; }, 4000);
+      }
+
+      alert(`มอบหมายงานและส่งตัว ${targetAgent.name} สำเร็จ!`);
+    }
+
+    // Render Chat Messages
+    function renderChats() {
+      const container = document.getElementById('chat-messages-container');
+      if (!container) return;
+      container.innerHTML = '';
+      chats.forEach(c => {
+        const isMe = c.sender === profileName;
+        const alignClass = isMe ? 'justify-end' : 'justify-start';
+        const bgClass = isMe ? 'bg-[#cabeff] text-[#32009a]' : 'bg-[#1c1a24] text-[#e6e0ee] border border-[#484555]/60';
+        const senderColor = isMe ? 'text-[#32009a]' : 'text-[#cabeff]';
+        const timeColor = isMe ? 'text-[#32009a]/60' : 'text-gray-500';
+        const roleLabel = c.role ? `<span class="text-[8px] opacity-60 block mt-0.5">${c.role}</span>` : '';
+        
+        let avatarUrl = '';
+        if (c.avatarType === 'profile') {
+          avatarUrl = profileImage;
+        } else {
+          avatarUrl = getAgentAvatar(c.avatarType);
+        }
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `flex gap-2 ${alignClass} items-start`;
+        msgDiv.innerHTML = `
+          ${isMe ? '' : `
+            <img src="${avatarUrl}" class="w-7 h-7 rounded-full border border-[#484555] object-cover shrink-0" referrerpolicy="no-referrer">
+          `}
+          <div class="max-w-[80%]">
+            <div class="rounded-lg p-2.5 ${bgClass} leading-snug">
+              <div class="flex items-baseline justify-between gap-2.5 mb-1">
+                <span class="font-bold text-[10px] ${senderColor}">${c.sender}</span>
+                <span class="text-[8px] font-mono ${timeColor}">${c.time}</span>
+              </div>
+              <p class="text-[11px] break-words whitespace-pre-line">${c.msg}</p>
+              ${roleLabel}
+            </div>
+          </div>
+          ${isMe ? `
+            <img src="${avatarUrl}" class="w-7 h-7 rounded-full border border-[#cabeff]/40 object-cover shrink-0" referrerpolicy="no-referrer">
+          ` : ''}
+        `;
+        container.appendChild(msgDiv);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Handling chat submission
+    function handleSendChatMessage(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('chat-input-field');
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) return;
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+      chats.push({
+        sender: profileName,
+        role: profileRole,
+        msg: text,
+        time: timeStr,
+        avatarType: 'profile'
+      });
+
+      if (chats.length > 50) chats.shift();
+      localStorage.setItem('feline_chats', JSON.stringify(chats));
+      input.value = '';
+      renderChats();
+
+      // Simple conversational reply trigger
+      setTimeout(() => {
+        const otherAgents = agents.filter(a => a.name !== profileName);
+        if (otherAgents.length === 0) return;
+        const responder = otherAgents[Math.floor(Math.random() * otherAgents.length)];
+
+        let replyMsg = '';
+        const lowercaseMsg = text.toLowerCase();
+        if (lowercaseMsg.includes('ปลา') || lowercaseMsg.includes('อาหาร') || lowercaseMsg.includes('tuna')) {
+          replyMsg = 'เนี้ยว! พูดถึงของอร่อยเหรอคะ? ล็อตปลาทูน่าเกรดดีเยี่ยมเพิ่งจัดส่งเข้ามาถึงด่านตรวจเลย!';
+        } else if (lowercaseMsg.includes('งาน') || lowercaseMsg.includes('ภารกิจ') || lowercaseMsg.includes('task') || lowercaseMsg.includes('deploy')) {
+          replyMsg = 'รับทราบสถานะภารกิจหลักค่ะท่านประธาน พร้อมสนับสนุนปฏิบัติงานยุทธวิธีทุกมิติ!';
+        } else {
+          const defaultReplies = [
+            'รับคำสั่งค่ะท่านประธาน! จะเฝ้าจับตาดูสถานการณ์ในบอร์ดการเทรดนี้อย่างใกล้ชิด',
+            'รับทราบครับผม! อุณหภูมิพัดลมและสายแลนในห้อง Data Center ทำงานปกติดีเนี้ยว',
+            'ตรวจพบการทำรายการซื้อ/ขายใหม่ในพอร์ต เดี๋ยวผมวิเคราะห์กราฟความเสี่ยงให้นะครับ!',
+            'ระบบความปลอดภัย Feline Terminal พร้อมปกป้องระบบอย่างเต็มพิกัดครับ!'
+          ];
+          replyMsg = defaultReplies[Math.floor(Math.random() * defaultReplies.length)];
+        }
+
+        const replyTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        chats.push({
+          sender: responder.name,
+          role: responder.role,
+          msg: replyMsg,
+          time: replyTime,
+          avatarType: responder.avatarType
+        });
+        if (chats.length > 50) chats.shift();
+        localStorage.setItem('feline_chats', JSON.stringify(chats));
+        renderChats();
+      }, 1500);
+    }
+
+    // Periodic simulation simulator
+    function startPeriodicChatSimulation() {
+      setInterval(() => {
+        const activeAgents = agents.filter(a => a.status === 'on_mission' || a.status === 'idle');
+        if (activeAgents.length === 0) return;
+        const agent = activeAgents[Math.floor(Math.random() * activeAgents.length)];
+        
+        let msgStr = '';
+        if (agent.status === 'on_mission') {
+          const missionMsgs = [
+            'รายงานความคืบหน้าภารกิจหลัก: กำลังสแกนพื้นที่รอบพิกัดอย่างระมัดระวังที่สุด',
+            'ทุกอย่างเป็นไปตามแผนการที่ประธานสั่งการ การตอบสนองระบบดีขึ้นอย่างเห็นได้ชัดค่ะ',
+            'อุณหภูมิเซิร์ฟเวอร์เสถียร ระบบเทรดสกินไม่มีความเสี่ยง ตรวจจับความอบอุ่นดีเยี่ยม',
+            'พบทางลับสำรองของระบบ (อยู่ใต้ผืนพรมเช็ดเท้า) ทำการตรึงพิกัดระวังภัยเรียบร้อย!'
+          ];
+          msgStr = missionMsgs[Math.floor(Math.random() * missionMsgs.length)];
+        } else {
+          const idleMsgs = [
+            'เนี้ยว... รอรับมอบหมายงานใหม่อยู่นะครับท่านประธาน ถ้าไม่มีภารกิจผมจะขอนอนกลางวันแป๊บนึง',
+            'ระบบสแกนรักษาความปลอดภัยทั่วไปทำงานสมบูรณ์ดีเยี่ยม สบายใจหายห่วงครับ',
+            'Data Ginger เสนอไอเดีย: ตารางอัปเดตราคาแบบ Real-time บนระบบสกินพร้อมอิงตาม Google Sheet',
+            'พบเลเซอร์สีแดงปริศนาเคลื่อนที่ไปมาตรงผนังด้านตะวันตก... เตรียมโจมตีใน 3.. 2.. 1!'
+          ];
+          msgStr = idleMsgs[Math.floor(Math.random() * idleMsgs.length)];
+        }
+
+        const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        chats.push({
+          sender: agent.name,
+          role: agent.role,
+          msg: msgStr,
+          time: timeStr,
+          avatarType: agent.avatarType
+        });
+        if (chats.length > 50) chats.shift();
+        localStorage.setItem('feline_chats', JSON.stringify(chats));
+        renderChats();
+      }, 35000);
+    }
+
+    // Marketing Page Campaign Boost
+    function boostCampaign(key) {
+      const bars = {
+        tuna: document.getElementById('campaign-bar-tuna'),
+        yarn: document.getElementById('campaign-bar-yarn')
+      };
+      
+      let width = parseFloat(bars[key].style.width);
+      width = width >= 100 ? 20 : width + 10;
+      bars[key].style.width = width + '%';
+      
+      addLog(`Marketing campaign "${key.toUpperCase()}" boosted: +50k clicks!`, 'Marketing', 'success');
+    }
+
+    // Render Skin Trades
+    function renderTradesTable() {
+      const tbody = document.getElementById('trades-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      const filtered = trades.filter(t => {
+        if (currentFilter === 'all') return true;
+        return t.status === currentFilter;
+      });
+
+      const filteredCountEl = document.getElementById('filtered-items-count');
+      if (filteredCountEl) {
+        filteredCountEl.innerText = `${filtered.length} ชิ้นในระบบ`;
+      }
+
+      const buyFeeInput = document.getElementById('global-buy-fee');
+      const sellFeeInput = document.getElementById('global-sell-fee');
+      const globalBuyFee = buyFeeInput ? parseFloat(buyFeeInput.value) : 2.0;
+      const globalSellFee = sellFeeInput ? parseFloat(sellFeeInput.value) : 5.0;
+
+      filtered.forEach(t => {
+        // Compute dynamically
+        const bFee = t.buyFeePct !== undefined ? t.buyFeePct : globalBuyFee;
+        const sFee = t.sellFeePct !== undefined ? t.sellFeePct : globalSellFee;
+
+        const trueCost = t.buyPrice * (1 + bFee / 100);
+        const trueSell = t.sellPrice ? t.sellPrice * (1 - sFee / 100) : null;
+        const profit = trueSell !== null ? trueSell - trueCost : null;
+
+        let badgeClass = 'bg-[#7c5cfc]/10 text-[#7c5cfc] border-[#7c5cfc]/40';
+        if (t.status === 'sold') badgeClass = 'bg-[#22C55E]/10 text-[#22C55E] border-[#22C55E]/40';
+        if (t.status === 'overdue') badgeClass = 'bg-[#EF4444]/10 text-[#EF4444] border-[#EF4444]/40';
+
+        const row = document.createElement('tr');
+        row.className = "hover:bg-white/5 transition-colors";
+        row.innerHTML = `
+          <td class="px-4 py-3 flex items-center gap-3">
+            <div class="text-base">${t.type === 'knife' ? '🔪' : t.type === 'gloves' ? '🧤' : t.type === 'rifle' ? '🔫' : t.type === 'pistol' ? '🔫' : '🎯'}</div>
+            <div>
+              <div class="text-white font-bold text-xs">${t.itemName}</div>
+              <div class="text-[10px] text-gray-400">${t.wear}</div>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-gray-400 text-[11px]">${t.buyDate}</td>
+          <td class="px-4 py-3">
+            <div class="text-white font-bold">${formatCurrency(t.buyPrice)}</div>
+            <div class="text-[9px] text-[#7c5cfc]">Fee: ${bFee.toFixed(1)}%</div>
+          </td>
+          <td class="px-4 py-3">
+            ${t.sellPrice ? `
+              <div class="text-[#F59E0B] font-bold">${formatCurrency(t.sellPrice)}</div>
+              <div class="text-[9px] text-[#22C55E]">Fee: ${sFee.toFixed(1)}%</div>
+            ` : `<span class="text-gray-500 italic">Holding...</span>`}
+          </td>
+          <td class="px-4 py-3 font-bold ${profit === null ? 'text-gray-400' : profit >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}">
+            ${profit !== null ? (profit >= 0 ? '+' : '') + formatCurrency(profit) : '—'}
+          </td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-0.5 border rounded-[2px] text-[9px] font-bold ${badgeClass}">
+              ${t.status.toUpperCase()}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <button onclick="openTradeModal(true, '${t.id}')" class="text-gray-400 hover:text-white">✏</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function setTradeFilter(f) {
+      currentFilter = f;
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.className = "filter-btn px-3 py-1 bg-black/40 text-gray-400 font-mono text-[10px] font-bold rounded border border-[#484555]/80";
+      });
+      const activeBtn = document.querySelector(`[data-filter="${f}"]`);
+      if (activeBtn) {
+        activeBtn.className = "filter-btn px-3 py-1 bg-[#cabeff] text-[#32009a] font-mono text-[10px] font-bold rounded border border-[#cabeff]";
+      }
+      renderTradesTable();
+    }
+
+    function updateGlobalFees() {
+      const buyFee = parseFloat(document.getElementById('global-buy-fee').value);
+      const sellFee = parseFloat(document.getElementById('global-sell-fee').value);
+      document.getElementById('lbl-buy-fee').innerText = buyFee.toFixed(1) + '%';
+      document.getElementById('lbl-sell-fee').innerText = sellFee.toFixed(1) + '%';
+      renderTradesTable();
+      renderStats();
+    }
+
+    // Modal Form handlers
+    function openTradeModal(isEdit, id = '') {
+      const modal = document.getElementById('trade-modal');
+      modal.classList.remove('hidden');
+
+      if (isEdit) {
+        document.getElementById('modal-title').innerText = 'แก้ไข Trade Details';
+        document.getElementById('btn-delete-trade').classList.remove('hidden');
+        
+        const t = trades.find(item => item.id === id);
+        if (t) {
+          document.getElementById('form-id').value = t.id;
+          document.getElementById('form-name').value = t.itemName;
+          document.getElementById('form-wear').value = t.wear;
+          document.getElementById('form-type').value = t.type;
+          document.getElementById('form-cost').value = t.buyPrice;
+          document.getElementById('form-sell').value = t.sellPrice || '';
+          document.getElementById('form-buy-date').value = t.buyDate;
+          document.getElementById('form-sell-date').value = t.targetSellDate;
+          document.getElementById('form-status').value = t.status;
+        }
+      } else {
+        document.getElementById('modal-title').innerText = 'เพิ่ม Trade รายการใหม่';
+        document.getElementById('btn-delete-trade').classList.add('hidden');
+        document.getElementById('trade-form').reset();
+        document.getElementById('form-id').value = '';
+        document.getElementById('form-buy-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('form-sell-date').value = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      }
+    }
+
+    function closeTradeModal() {
+      document.getElementById('trade-modal').classList.add('hidden');
+    }
+
+    function handleTradeFormSubmit(e) {
+      e.preventDefault();
+      const id = document.getElementById('form-id').value;
+      const itemName = document.getElementById('form-name').value;
+      const wear = document.getElementById('form-wear').value;
+      const type = document.getElementById('form-type').value;
+      const buyPrice = parseFloat(document.getElementById('form-cost').value) || 0;
+      const sellVal = document.getElementById('form-sell').value;
+      const sellPrice = sellVal ? parseFloat(sellVal) : null;
+      const buyDate = document.getElementById('form-buy-date').value;
+      const targetSellDate = document.getElementById('form-sell-date').value;
+      const status = document.getElementById('form-status').value;
+
+      const globalBuyFee = parseFloat(document.getElementById('global-buy-fee').value);
+      const globalSellFee = parseFloat(document.getElementById('global-sell-fee').value);
+
+      if (id) {
+        // Edit existing
+        trades = trades.map(t => t.id === id ? { ...t, itemName, wear, type, buyPrice, sellPrice, buyDate, targetSellDate, status } : t);
+        addLog(`อัปเดตสกินสำเร็จ: ${itemName}`, 'Finance', 'info');
+      } else {
+        // Create new
+        const fresh = {
+          id: 'trade-' + Date.now(),
+          itemName, wear, type, buyPrice, sellPrice, buyDate, targetSellDate, status,
+          buyFeePct: globalBuyFee,
+          sellFeePct: globalSellFee
+        };
+        trades.unshift(fresh);
+        addLog(`เพิ่มสกินใหม่สำเร็จ: ${itemName}`, 'Finance', 'success');
+      }
+
+      localStorage.setItem('feline_trades', JSON.stringify(trades));
+      closeTradeModal();
+      renderAll();
+
+      // If GAS is connected, also save back to sheet!
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.saveTradeToSheet({ itemName, wear, type, buyPrice, sellPrice, buyDate, targetSellDate, status });
+      }
+    }
+
+    function deleteCurrentTrade() {
+      const id = document.getElementById('form-id').value;
+      if (confirm("คุณต้องการลบข้อมูลสกินนี้จริงหรือไม่?")) {
+        trades = trades.filter(t => t.id !== id);
+        localStorage.setItem('feline_trades', JSON.stringify(trades));
+        addLog(`ลบข้อมูลสกินสำเร็จ`, 'Finance', 'warn');
+        closeTradeModal();
+        renderAll();
+      }
+    }
+
+    // Sidebar ROI Calculator Math
+    function calculateRoiSidebar() {
+      const buy = parseFloat(document.getElementById('calc-buy').value) || 0;
+      const sell = parseFloat(document.getElementById('calc-sell').value) || 0;
+
+      const bFee = parseFloat(document.getElementById('global-buy-fee').value);
+      const sFee = parseFloat(document.getElementById('global-sell-fee').value);
+
+      const trueCost = buy * (1 + bFee / 100);
+      const netReceived = sell * (1 - sFee / 100);
+      const profit = netReceived - trueCost;
+      const roi = trueCost > 0 ? (profit / trueCost) * 100 : 0;
+
+      document.getElementById('calc-lbl-cost').innerText = formatCurrency(trueCost);
+      document.getElementById('calc-lbl-payout').innerText = formatCurrency(netReceived);
+      
+      const profitLbl = document.getElementById('calc-lbl-profit');
+      profitLbl.innerText = (profit >= 0 ? '+' : '') + formatCurrency(profit);
+      profitLbl.className = `text-base font-bold ${profit >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`;
+
+      const roiLbl = document.getElementById('calc-lbl-roi');
+      roiLbl.innerText = roi.toFixed(2) + '%';
+      roiLbl.className = `font-bold ${profit >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`;
+    }
+
+    function addSimulatedTrade() {
+      const buy = parseFloat(document.getElementById('calc-buy').value) || 0;
+      const sell = parseFloat(document.getElementById('calc-sell').value) || 0;
+      
+      const fresh = {
+        id: 'trade-' + Date.now(),
+        itemName: 'Simulated Customs Skin',
+        wear: 'Minimal Wear (0.09)',
+        type: 'other',
+        buyPrice: buy,
+        sellPrice: sell,
+        buyDate: new Date().toISOString().split('T')[0],
+        targetSellDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: 'sold',
+        buyFeePct: parseFloat(document.getElementById('global-buy-fee').value),
+        sellFeePct: parseFloat(document.getElementById('global-sell-fee').value)
+      };
+
+      trades.unshift(fresh);
+      localStorage.setItem('feline_trades', JSON.stringify(trades));
+      addLog(`เพิ่มสกินจำลองเข้าระบบ: ${fresh.itemName}`, 'Finance', 'success');
+      renderAll();
+      alert("เพิ่มข้อมูลสกินจากการจำลองเข้าระบบสำเร็จ!");
+    }
+
+    // Risk Analyzer page logic
+    function runRiskAnalyzer() {
+      const buy = parseFloat(document.getElementById('risk-buy-price').value) || 0;
+      const buyFee = parseFloat(document.getElementById('risk-buy-fee').value) || 0;
+      const sell = parseFloat(document.getElementById('risk-sell-price').value) || 0;
+      const sellFee = parseFloat(document.getElementById('risk-sell-fee').value) || 0;
+
+      const trueCost = buy * (1 + buyFee / 100);
+      const netReceived = sell * (1 - sellFee / 100);
+      const profitUsd = netReceived - trueCost;
+      const roi = trueCost > 0 ? (profitUsd / trueCost) * 100 : 0;
+      const breakEven = sellFee < 100 ? trueCost / (1 - sellFee / 100) : 0;
+
+      // Outputs labels update
+      document.getElementById('risk-res-profit-usd').innerText = (profitUsd >= 0 ? '+' : '') + formatCurrency(profitUsd);
+      document.getElementById('risk-res-profit-usd').className = `text-xl font-bold font-mono mt-1 ${profitUsd >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`;
+
+      document.getElementById('risk-res-profit-thb').innerText = (profitUsd >= 0 ? '+' : '') + formatBaht(profitUsd * USD_TO_THB);
+      document.getElementById('risk-res-profit-thb').className = `text-xl font-bold font-mono mt-1 ${profitUsd >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`;
+
+      document.getElementById('risk-res-roi').innerText = roi.toFixed(2) + '%';
+      document.getElementById('risk-res-roi').className = `text-xl font-bold font-mono mt-1 ${profitUsd >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`;
+
+      document.getElementById('risk-res-breakeven').innerText = formatCurrency(breakEven);
+      document.getElementById('risk-lbl-breakeven-explain').innerText = formatCurrency(breakEven);
+    }
+
+    // Operations and briefing page logic
+    function renderAgentsAndMissions() {
+      // Agents list
+      const container = document.getElementById('agents-list-container');
+      if (container) {
+        container.innerHTML = '';
+        agents.forEach(a => {
+          const isActive = selectedAgent && selectedAgent.id === a.id;
+          const row = document.createElement('div');
+          row.onclick = () => { selectedAgent = a; renderAgentsAndMissions(); };
+          row.className = `p-3 border-2 rounded flex items-center gap-3 cursor-pointer transition-all ${
+            isActive ? 'bg-[#201e28] border-[#cabeff]' : 'bg-[#14121b] border-[#484555]/60 hover:border-gray-500'
+          }`;
+          
+          row.innerHTML = `
+            <div class="w-9 h-9 border border-[#484555]/80 overflow-hidden rounded-full bg-[#1A1D27]">
+              <img class="w-full h-full object-cover" src="${getAgentAvatar(a.avatarType)}" alt="${a.name}">
+            </div>
+            <div class="flex-1 min-w-0">
+              <h4 class="text-white font-bold font-sans text-xs truncate">${a.name}</h4>
+              <p class="text-gray-400 font-mono text-[9px] truncate">${a.role}</p>
+            </div>
+            <span class="px-2 py-0.5 rounded-[2px] font-mono text-[9px] font-bold ${
+              a.status === 'on_mission' ? 'bg-[#EF4444]/15 text-[#EF4444]' : 'bg-[#22C55E]/15 text-[#22C55E]'
+            }">
+              ${a.status.toUpperCase()}
+            </span>
+          `;
+          container.appendChild(row);
+        });
+      }
+
+      // Missions tabs
+      const tabsContainer = document.getElementById('missions-tabs-container');
+      if (tabsContainer) {
+        tabsContainer.innerHTML = '';
+        missions.forEach(m => {
+          const isActive = selectedMission && selectedMission.id === m.id;
+          const btn = document.createElement('button');
+          btn.onclick = () => { selectedMission = m; renderAgentsAndMissions(); };
+          btn.className = `p-2 font-mono text-[9px] font-bold border rounded transition-all truncate text-center ${
+            isActive ? 'bg-[#cabeff] text-[#32009a] border-[#cabeff]' : 'bg-black/30 text-gray-400 border-[#484555]/80'
+          }`;
+          btn.innerText = m.title.split(': ')[1] || m.title;
+          tabsContainer.appendChild(btn);
+        });
+      }
+
+      // Briefing detail view
+      const briefContainer = document.getElementById('mission-brief-content');
+      if (briefContainer && selectedMission) {
+        briefContainer.innerHTML = `
+          <div>
+            <h3 class="font-sans text-sm font-bold text-white">${selectedMission.title}</h3>
+            <p class="text-gray-400 font-mono text-xs mt-1.5 leading-relaxed">${selectedMission.objective}</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 bg-black/30 border border-[#484555]/40 p-3 rounded font-mono text-xs">
+            <div>
+              <span class="text-gray-400 block text-[9px]">OPERATIONS OFFICER</span>
+              <span class="text-white font-bold">${selectedMission.agent || 'ยังไม่ได้มอบหมาย'}</span>
+            </div>
+            <div>
+              <span class="text-gray-400 block text-[9px]">MISSION PRIORITY</span>
+              <span class="font-bold ${selectedMission.priority === 'CRITICAL' ? 'text-[#EF4444]' : 'text-[#F59E0B]'}">${selectedMission.priority}</span>
+            </div>
+            <div class="mt-2">
+              <span class="text-gray-400 block text-[9px]">MISSION PAYOUT</span>
+              <span class="text-[#22C55E] font-bold">฿${selectedMission.payout.toLocaleString()}</span>
+            </div>
+            <div class="mt-2">
+              <span class="text-gray-400 block text-[9px]">TIME TO TARGET</span>
+              <span class="text-white font-bold">${selectedMission.deadline}</span>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between font-mono text-[9px] text-gray-400 uppercase">
+              <span>Tactical Completion Status</span>
+              <span class="text-[#cabeff] font-bold">${selectedMission.progress}%</span>
+            </div>
+            <div class="h-3 bg-black/50 border border-[#484555] rounded-full p-0.5 overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-[#7c5cfc] to-[#cabeff] rounded-full" style="width: ${selectedMission.progress}%;"></div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function deploySelectedAgent() {
+      if (!selectedAgent || !selectedMission) return;
+      if (selectedAgent.status === 'on_mission') {
+        alert("เอเจนท์ท่านนี้กำลังปฏิบัติภารกิจอื่นอยู่!");
+        return;
+      }
+
+      agents = agents.map(a => a.id === selectedAgent.id ? { ...a, status: 'on_mission' } : a);
+      missions = missions.map(m => m.id === selectedMission.id ? { ...m, agent: selectedAgent.name, progress: Math.min(m.progress + 20, 100) } : m);
+      
+      localStorage.setItem('feline_agents', JSON.stringify(agents));
+      localStorage.setItem('feline_missions', JSON.stringify(missions));
+
+      addLog(`DEPLOYED: ส่งตัว ${selectedAgent.name} ไปปฏิบัติภารกิจ "${selectedMission.title}"`, 'Operations', 'success');
+      renderAgentsAndMissions();
+      alert(`ส่งตัว ${selectedAgent.name} ไปปฏิบัติภารกิจสำเร็จ!`);
+    }
+
+    function getAgentAvatar(type) {
+      switch (type) {
+        case 'tuxedo': return 'https://lh3.googleusercontent.com/aida-public/AB6AXuCM8Ve5m3Ih0WqEpktNygSXsTIKBt_1tSLnsVBA6b28Utg_NP-k1kjdR_8uh5oG4FOVK0Xey1O6TMShLP0j_QfJdlNA6kn23AftUcNbHQ7FgdoHCCPFfcuW4c3KJ51Ker5YBAYcEfsj78DAAnCQgsVgZvxQTL22dZy8QjitNhPLfiC6lIKS3kErL7b3sJWxPh91ARijqTAs_OeLWzt1SKJUU0AetsqZqJwCI-G_bXUo6ENSMqRYMfi6U-N-t3e3pmSuIj4RKSykxcrq';
+        case 'ginger': return 'https://lh3.googleusercontent.com/aida-public/AB6AXuCY2-l7bvJNXGutOJyFIIYffeqe2F3HkSW4ub0MdCMf3mxd70FqJr_f2orFTI6G7CK-uTI1lx2_mnsVGiYASjMvQOacLrHu6vuOg7J-SzPLotaUN--KPCCFZw8wLnSO3x8bcgiDAAw0SyMcN-Ozdi0x_1bpiVXgBQDxyvI6xtUpNI1MQ3tE0tBwNGGtFdVRkUyjai6c7_BFfgTh0fWojJSinxQobAHL_GW6U3XiWdfdpOT1cNQmWh5y2Bey65HgWrtOV7FOq9KDgSst';
+        case 'calico': return 'https://lh3.googleusercontent.com/aida-public/AB6AXuDZO8rTnSxuzGK-c4bvP_bKC4uyLaBA6ZnDw_K7KUyNdXNfAise5p1glDXi9pze2KGl5733adBT7wpmZQ6ftszjFe29SaVjaCmLbJghmmR58nfcs_CVjLIcHLurWXJlFEto9VZ9OzkXlyYMH49YzkMWtPE40SKa-K8g-zVdMEm0P2_F8tA9vlY-BoGH645juP_wkjvB0ZQyrT9UQHWR60S_03qoB75EjbSI0dW62bUIIUuh38uwhusyKxBiWXPH2bVuCn8Ouxg4MmJv';
+        default: return 'https://lh3.googleusercontent.com/aida-public/AB6AXuDTRjQu_AY4ENFxkmL00xmE5Tw5vPVE7fVavu8tsmCY3yGlwjF-2nClubDsKv9evPawooQ3d9F_odjTnfeYsKYYvh_qzNAj_rF6a_om2QRkqdNfN7PEX6ElbSAPxLMEk6DJbzhlRK_9Wm_DgbQuI_sTn5rgdZfa_SL5yNU7U-DEwrHPua86-Ts3egRj36Kb1lSY2HzHd1DKovUFqSKZK4wBvfOlWwhBV7e7igxvafG8_IjH5Idn4g5G8N-zs4aZuAUPb-fNERcfT0JO';
+      }
+    }
+
+    // Sound easter egg and alert
+    function triggerEmergency() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1400, audioCtx.currentTime + 0.15);
+        osc.frequency.exponentialRampToValueAtTime(1100, audioCtx.currentTime + 0.4);
+        
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+      } catch (e) {
+        // ignore blocked
+      }
+
+      addLog("EMERGENCY CATNIP ACTIVATED: Whiskers demanded treats!", 'Command', 'error');
+      alert("🐱 CEO WHISKERS DEMANDED IMMEDIATE CATNIP! Emergency sirens activated.");
+    }
+
+    // Google Sheets Apps Script parsing helper
+    async function syncGasNow(isDemo) {
+      const url = document.getElementById('sheets-api-url').value.trim();
+      const statusBox = document.getElementById('gas-sync-status');
+      
+      statusBox.innerHTML = '<span class="text-[#10B981] animate-pulse">⚙️ กำลังดาวน์โหลดและซิงค์ข้อมูลจาก Google Sheets...</span>';
+      addLog("เริ่มเชื่อมต่อ Google Sheets API...", "System", "info");
+
+      try {
+        if (!isDemo && !url) {
+          throw new Error("กรุณากรอก URL เว็บแอปก่อนทำการดึงข้อมูล");
+        }
+
+        let csvContent = "";
+        if (isDemo) {
+          // Fallback csv content
+          csvContent = `Item Name,Wear/Details,Type,Buy Date,Target Sell Date,Buy Price,Buy Fee %,Sell Price,Sell Fee %,Status
+Karambit | Doppler,Factory New (0.01),knife,2026-06-25,2026-07-05,1850.00,2.0,2250.00,5.0,sold
+AWP | Dragon Lore,Minimal Wear (0.09),rifle,2026-06-10,2026-07-01,9500.00,1.5,12000.00,5.0,holding
+Sport Gloves | Pandora's Box,Field-Tested (0.24),gloves,2026-06-01,2026-06-20,3800.00,1.0,4100.00,5.0,overdue
+Glock-18 | Fade,Factory New (0.03),pistol,2026-06-18,2026-07-12,980.00,2.0,,5.0,holding`;
+          // Delay to feel natural
+          await new Promise(r => setTimeout(r, 1000));
+        } else {
+          // Network fetch with CORS bypass
+          const response = await fetch(url);
+          if (!response.ok) throw new Error("ไม่สามารถดาวน์โหลดข้อมูลจาก URL ที่ระบุได้");
+          csvContent = await response.text();
+        }
+
+        // Parse CSV string to Trade Objects
+        const parsedTrades = parseCSVText(csvContent);
+        if (parsedTrades.length > 0) {
+          trades = [...parsedTrades, ...trades];
+          localStorage.setItem('feline_trades', JSON.stringify(trades));
+          localStorage.setItem('feline_sheet_url', url);
+          
+          statusBox.innerHTML = `
+            <div class="text-[#22C55E] text-xs font-bold font-mono">
+              ✔️ ซิงก์ข้อมูลสำเร็จ! นำเข้าข้อมูลจำนวน ${parsedTrades.length} ชิ้น เรียบร้อย
+            </div>
+          `;
+          addLog(`ประสานข้อมูลกับชีตสำเร็จ นำเข้าได้ ${parsedTrades.length} รายการ`, "System", "success");
+          renderAll();
+        } else {
+          throw new Error("ไม่พบข้อมูลที่ตรงกับโครงสร้างคอลัมน์ในตาราง");
+        }
+
+      } catch (e) {
+        statusBox.innerHTML = `
+          <div class="text-[#EF4444] text-xs font-bold font-mono">
+            ❌ ล้มเหลว: ${e.message}
+          </div>
+        `;
+        addLog(`เชื่อมโยงล้มเหลว: ${e.message}`, "System", "error");
+      }
+    }
+
+    // Parsing CSV string
+    function parseCSVText(text) {
+      const lines = text.split(/\r?\n/);
+      if (lines.length <= 1) return [];
+
+      const result = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        // Split by comma
+        const parts = line.split(',');
+        if (parts.length < 6) continue;
+
+        const itemName = parts[0] || 'Unknown skin';
+        const wear = parts[1] || 'Factory New';
+        const type = parts[2] || 'other';
+        const buyDate = parts[3] || '';
+        const targetSellDate = parts[4] || '';
+        const buyPrice = parseFloat(parts[5]) || 0;
+        const buyFeePct = parseFloat(parts[6]) || 2.0;
+        const sellPrice = parts[7] ? parseFloat(parts[7]) : null;
+        const sellFeePct = parseFloat(parts[8]) || 5.0;
+        const status = parts[9] ? parts[9].toLowerCase().trim() : 'holding';
+
+        result.push({
+          id: 'gas-' + i + '-' + Date.now(),
+          itemName, wear, type, buyDate, targetSellDate, buyPrice, buyFeePct, sellPrice, sellFeePct, status
+        });
+      }
+      return result;
+    }
+
+    function parseAndImportGasRows(rows) {
+      if (rows.length <= 1) return;
+      const result = [];
+      // Row 0 is Header
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length < 6) continue;
+
+        result.push({
+          id: 'gas-raw-' + i + '-' + Date.now(),
+          itemName: row[0] || 'Unknown Skin',
+          wear: row[1] || 'Factory New',
+          type: row[2] || 'other',
+          buyDate: row[3] || '',
+          targetSellDate: row[4] || '',
+          buyPrice: parseFloat(row[5]) || 0,
+          buyFeePct: parseFloat(row[6]) || 2.0,
+          sellPrice: row[7] ? parseFloat(row[7]) : null,
+          sellFeePct: parseFloat(row[8]) || 5.0,
+          status: row[9] ? row[9].toString().toLowerCase().trim() : 'holding'
+        });
+      }
+      trades = [...result, ...trades];
+      localStorage.setItem('feline_trades', JSON.stringify(trades));
+      renderAll();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "Feline Command Terminal",
+  "description": "A sophisticated CS2 skin trading dashboard and simulator for CEO Whiskers, featuring automatic Google Sheets synchronization, risk-analysis calculators, operations briefings, and real-time marketing logs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
